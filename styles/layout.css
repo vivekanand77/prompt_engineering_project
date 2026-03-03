@@ -1,0 +1,210 @@
+/* ─── Main Layout ─── */
+.layout {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    min-height: 100vh;
+}
+
+.layout-content {
+    min-height: 100vh;
+}
+
+/* ─── Sidebar ─── */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 64px;
+    height: 100vh;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--sp-3) 0;
+    z-index: 50;
+    background: var(--bg-primary);
+}
+
+/* ─── Top Bar ─── */
+.topbar {
+    position: fixed;
+    top: 0;
+    left: 64px;
+    right: 0;
+    height: 48px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--sp-4);
+    z-index: 40;
+    background: var(--bg-primary);
+}
+
+/* ─── Container ─── */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--sp-4);
+}
+
+.container-sm {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 var(--sp-4);
+}
+
+.container-lg {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 var(--sp-4);
+}
+
+/* ─── Page ─── */
+.page {
+    padding-top: calc(48px + var(--sp-5));
+    padding-bottom: var(--sp-6);
+    margin-left: 64px;
+}
+
+/* ─── Dividers ─── */
+.divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: var(--sp-5) 0;
+}
+
+.divider-sm {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: var(--sp-3) 0;
+}
+
+.divider-dark {
+    border: none;
+    border-top: 1px solid var(--border-dark);
+    margin: var(--sp-5) 0;
+}
+
+/* ─── Grid helpers ─── */
+.grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--sp-3);
+}
+
+.grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--sp-3);
+}
+
+.grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--sp-3);
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+    .layout {
+        grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+        display: none;
+    }
+
+    .topbar {
+        left: 0;
+        top: 0;
+        height: auto;
+        min-height: 48px;
+        flex-wrap: wrap;
+        padding: var(--sp-1) var(--sp-2);
+        gap: var(--sp-1);
+    }
+
+    .topbar-links {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        flex-shrink: 0;
+        width: 100%;
+    }
+
+    .topbar-links::-webkit-scrollbar {
+        display: none;
+    }
+
+    .btn-cta-desktop {
+        display: none;
+    }
+
+    .page {
+        margin-left: 0;
+        padding-top: calc(56px + var(--sp-3));
+        padding-bottom: var(--sp-4);
+    }
+
+    .container,
+    .container-sm,
+    .container-lg {
+        padding: 0 var(--sp-2);
+    }
+
+    .grid-2,
+    .grid-3,
+    .grid-4 {
+        grid-template-columns: 1fr;
+    }
+
+    /* ─── Responsive inline grid overrides ─── */
+    .resp-grid-2 {
+        grid-template-columns: 1fr !important;
+    }
+
+    .resp-grid-3 {
+        grid-template-columns: 1fr !important;
+    }
+
+    .resp-grid-4 {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    .resp-grid-feature {
+        grid-template-columns: 32px 1fr auto !important;
+    }
+
+    .resp-stack {
+        flex-direction: column !important;
+    }
+
+    .resp-scroll-x {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        flex-wrap: nowrap !important;
+        scrollbar-width: none;
+    }
+
+    .resp-scroll-x::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Navigation tabs responsive */
+    .stage-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .stage-tabs::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .resp-grid-4 {
+        grid-template-columns: 1fr !important;
+    }
+}

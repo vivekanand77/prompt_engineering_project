@@ -1,0 +1,319 @@
+/* ─── Buttons ─── */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-1);
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: var(--sp-2) var(--sp-3);
+    border: 1px solid var(--border-dark);
+    border-radius: 0;
+    color: var(--text-primary);
+    background: transparent;
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-default);
+    white-space: nowrap;
+}
+
+.btn:hover {
+    background: var(--bg-dark);
+    color: var(--text-inverse);
+}
+
+.btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.btn:disabled:hover {
+    background: transparent;
+    color: var(--text-primary);
+}
+
+.btn-solid {
+    background: var(--bg-dark);
+    color: var(--text-inverse);
+    border-color: var(--bg-dark);
+}
+
+.btn-solid:hover {
+    background: transparent;
+    color: var(--text-primary);
+}
+
+.btn-ghost {
+    border-color: transparent;
+    color: var(--text-secondary);
+}
+
+.btn-ghost:hover {
+    color: var(--text-primary);
+    border-color: var(--border);
+}
+
+.btn-sm {
+    font-size: 10px;
+    padding: var(--sp-1) var(--sp-2);
+}
+
+.btn-lg {
+    font-size: 12px;
+    padding: var(--sp-3) var(--sp-4);
+}
+
+/* ─── Cards ─── */
+.card {
+    border: 1px solid var(--border);
+    padding: var(--sp-3);
+    border-radius: 0;
+    background: var(--bg-primary);
+    transition: border-color var(--duration-fast) var(--ease-default);
+}
+
+.card:hover {
+    border-color: var(--border-dark);
+}
+
+.card-flush {
+    border: none;
+    border-bottom: 1px solid var(--border);
+    padding: var(--sp-3) 0;
+    border-radius: 0;
+}
+
+/* ─── Inputs ─── */
+.input {
+    width: 100%;
+    padding: var(--sp-1) 0;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--text-primary);
+    background: transparent;
+    outline: none;
+    border-radius: 0;
+    transition: border-color var(--duration-fast) var(--ease-default);
+}
+
+.input:focus {
+    border-bottom-color: var(--text-primary);
+}
+
+.input::placeholder {
+    color: var(--text-muted);
+}
+
+.textarea {
+    width: 100%;
+    padding: var(--sp-2);
+    border: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-primary);
+    background: transparent;
+    outline: none;
+    border-radius: 0;
+    resize: vertical;
+    transition: border-color var(--duration-fast) var(--ease-default);
+}
+
+.textarea:focus {
+    border-color: var(--text-primary);
+}
+
+.textarea::placeholder {
+    color: var(--text-muted);
+}
+
+/* ─── Tags / Pills ─── */
+.tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 4px var(--sp-1);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+}
+
+.tag-dark {
+    background: var(--bg-dark);
+    color: var(--text-inverse);
+    border-color: var(--bg-dark);
+}
+
+/* ─── Code Block ─── */
+.code-block {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    padding: var(--sp-3);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text-primary);
+    overflow-x: auto;
+}
+
+/* ─── Links ─── */
+.link {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: color var(--duration-fast) var(--ease-default);
+}
+
+.link::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 0;
+    height: 1px;
+    background: var(--text-primary);
+    transition: width var(--duration-normal) var(--ease-default);
+}
+
+.link:hover {
+    color: var(--text-primary);
+}
+
+.link:hover::after {
+    width: 100%;
+}
+
+/* ─── Nav Link ─── */
+.nav-link {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: var(--sp-1) var(--sp-2);
+    transition: color var(--duration-fast) var(--ease-default);
+}
+
+.nav-link:hover {
+    color: var(--text-primary);
+}
+
+.nav-link-active {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* ─── Progress bar ─── */
+.progress-track {
+    height: 2px;
+    background: var(--border);
+    width: 100%;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--text-primary);
+    transition: width 0.6s var(--ease-default);
+}
+
+/* ─── Reveal animation ─── */
+.reveal {
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity var(--duration-normal) var(--ease-default),
+        transform var(--duration-normal) var(--ease-default);
+}
+
+.reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ─── Spacing utilities ─── */
+.mt-1 {
+    margin-top: var(--sp-1);
+}
+
+.mt-2 {
+    margin-top: var(--sp-2);
+}
+
+.mt-3 {
+    margin-top: var(--sp-3);
+}
+
+.mt-4 {
+    margin-top: var(--sp-4);
+}
+
+.mt-5 {
+    margin-top: var(--sp-5);
+}
+
+.mt-6 {
+    margin-top: var(--sp-6);
+}
+
+.mb-1 {
+    margin-bottom: var(--sp-1);
+}
+
+.mb-2 {
+    margin-bottom: var(--sp-2);
+}
+
+.mb-3 {
+    margin-bottom: var(--sp-3);
+}
+
+.mb-4 {
+    margin-bottom: var(--sp-4);
+}
+
+.pt-3 {
+    padding-top: var(--sp-3);
+}
+
+.pt-4 {
+    padding-top: var(--sp-4);
+}
+
+.pb-3 {
+    padding-bottom: var(--sp-3);
+}
+
+.pb-4 {
+    padding-bottom: var(--sp-4);
+}
+
+.px-3 {
+    padding-left: var(--sp-3);
+    padding-right: var(--sp-3);
+}
+
+.px-4 {
+    padding-left: var(--sp-4);
+    padding-right: var(--sp-4);
+}
+
+.gap-1 {
+    gap: var(--sp-1);
+}
+
+.gap-2 {
+    gap: var(--sp-2);
+}
+
+.gap-3 {
+    gap: var(--sp-3);
+}
