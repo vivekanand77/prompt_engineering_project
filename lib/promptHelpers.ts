@@ -36,25 +36,67 @@ export function buildPrompt(fields: PromptFields): string {
     return sections.join("\n\n");
 }
 
-export function scorePrompt(prompt: string): number {
+export interface ScoreResult {
+    score: number;
+    feedback: string;
+    suggestions: string[];
+}
+
+export function scorePrompt(prompt: string): ScoreResult {
     let score = 0;
-    const checks = [
-        { pattern: /GOAL|objective|task/i, weight: 20 },
-        { pattern: /CONTEXT|background|situation/i, weight: 15 },
-        { pattern: /OUTPUT|format|structure/i, weight: 20 },
-        { pattern: /CONSTRAINT|limit|rule|must not/i, weight: 15 },
-        { pattern: /tone|style|voice/i, weight: 10 },
-        { pattern: /example|instance|for instance/i, weight: 10 },
-        { pattern: /step|first|then|finally/i, weight: 10 },
+    const suggestions: string[] = [];
+    const trimmed = prompt.trim();
+    const words = trimmed.split(/\s+/).filter(Boolean).length;
+
+    // 1. Component Checks (Structural)
+    const components = [
+        { pattern: /GOAL|objective|task|achieve|want to/i, label: "Goal", weight: 20 },
+        { pattern: /CONTEXT|background|situation|industry|company/i, label: "Context", weight: 15 },
+        { pattern: /OUTPUT|format|structure|layout|markdown|json/i, label: "Output Format", weight: 15 },
+        { pattern: /CONSTRAINT|limit|rule|must not|avoid|without/i, label: "Constraints", weight: 15 },
+        { pattern: /tone|style|voice|persona|act as|you are/i, label: "Persona/Tone", weight: 15 },
+        { pattern: /example|instance|show me|case study/i, label: "Examples", weight: 10 },
     ];
 
-    for (const check of checks) {
-        if (check.pattern.test(prompt)) {
-            score += check.weight;
+    for (const comp of components) {
+        if (comp.pattern.test(prompt)) {
+            score += comp.weight;
+        } else if (comp.weight >= 15) {
+            suggestions.push(`Missing clear **${comp.label}**`);
         }
     }
 
-    return Math.min(score, 100);
+    // 2. Length/Detail Heuristic
+    if (words < 10) {
+        score -= 20;
+        suggestions.push("Prompt is too short; add more detail");
+    } else if (words > 30 && words < 300) {
+        score += 10;
+    }
+
+    // 3. Instruction Clarity (Action Verbs)
+    const actionVerbs = /^(write|create|explain|analyze|summarize|draft|build|generate|review)/i;
+    if (actionVerbs.test(trimmed)) {
+        score += 10;
+    } else {
+        suggestions.push("Start with a strong action verb (e.g., 'Analyze' or 'Create')");
+    }
+
+    // Normalized Score
+    const finalScore = Math.max(0, Math.min(score, 100));
+
+    // Feedback Logic
+    let feedback = "Basic structure";
+    if (finalScore >= 80) feedback = "Excellent prompt engineering";
+    else if (finalScore >= 60) feedback = "Effective and clear";
+    else if (finalScore >= 40) feedback = "Fair, but needs detail";
+    else feedback = "Needs significant detail";
+
+    return {
+        score: finalScore,
+        feedback,
+        suggestions: suggestions.slice(0, 3) // Return top 3 hints
+    };
 }
 
 export function getScoreLabel(score: number): {
@@ -126,6 +168,6 @@ export function checkLiveMode() {
     return {
         openai: !!process.env.OPENAI_API_KEY,
         google: !!process.env.GOOGLE_AI_API_KEY,
-        anthropic: !!process.env.ANTHROPIC_API_KEY,
+        nvidia: !!process.env.NVIDIA_API_KEY,
     };
 }

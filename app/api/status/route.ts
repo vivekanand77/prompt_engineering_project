@@ -5,7 +5,7 @@ export async function GET() {
         providers: {
             openai: !!process.env.OPENAI_API_KEY,
             google: !!process.env.GOOGLE_AI_API_KEY,
-            anthropic: !!process.env.ANTHROPIC_API_KEY,
+            nvidia: !!process.env.NVIDIA_API_KEY,
         }
     });
 }

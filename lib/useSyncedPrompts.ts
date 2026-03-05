@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/lib/useAuth";
 import { SavedPrompt } from "@/lib/useLocalStorage";
 import {
@@ -20,6 +20,9 @@ export function useSyncedPrompts() {
     const { user } = useAuth();
     const [prompts, setPrompts] = useState<SavedPrompt[]>([]);
     const [loading, setLoading] = useState(true);
+    // Keep a ref so callbacks always see the latest prompts without stale closures
+    const promptsRef = useRef<SavedPrompt[]>(prompts);
+    useEffect(() => { promptsRef.current = prompts; }, [prompts]);
 
     // ─── Initial fetch ───
     useEffect(() => {
@@ -70,11 +73,11 @@ export function useSyncedPrompts() {
             if (user) {
                 await savePromptToFirestore(user.uid, newPrompt);
             } else {
-                persistLocal([newPrompt, ...prompts]);
+                persistLocal([newPrompt, ...promptsRef.current]);
             }
             return newPrompt;
         },
-        [user, prompts, persistLocal]
+        [user, persistLocal]
     );
 
     // ─── Update ───
@@ -92,10 +95,10 @@ export function useSyncedPrompts() {
                 await updatePromptInFirestore(user.uid, id, {
                     content,
                     ...(title ? { title } : {}),
-                    version: (prompts.find((p) => p.id === id)?.version ?? 0) + 1,
+                    version: (promptsRef.current.find((p) => p.id === id)?.version ?? 0) + 1,
                 });
             } else {
-                const updated = prompts.map((p) =>
+                const updated = promptsRef.current.map((p) =>
                     p.id === id
                         ? { ...p, content, title: title || p.title, updatedAt: new Date().toISOString(), version: p.version + 1 }
                         : p
@@ -103,7 +106,7 @@ export function useSyncedPrompts() {
                 persistLocal(updated);
             }
         },
-        [user, prompts, persistLocal]
+        [user, persistLocal]
     );
 
     // ─── Delete ───
@@ -114,21 +117,21 @@ export function useSyncedPrompts() {
             if (user) {
                 await deletePromptFromFirestore(user.uid, id);
             } else {
-                persistLocal(prompts.filter((p) => p.id !== id));
+                persistLocal(promptsRef.current.filter((p) => p.id !== id));
             }
         },
-        [user, prompts, persistLocal]
+        [user, persistLocal]
     );
 
     // ─── Export ───
     const exportPrompts = useCallback((): string => {
-        return JSON.stringify(prompts, null, 2);
-    }, [prompts]);
+        return JSON.stringify(promptsRef.current, null, 2);
+    }, []);
 
     // ─── Import ───
     const importPrompts = useCallback(
         async (data: SavedPrompt[]) => {
-            const existingIds = new Set(prompts.map((p) => p.id));
+            const existingIds = new Set(promptsRef.current.map((p) => p.id));
             const newOnes = data.filter((p) => !existingIds.has(p.id));
 
             setPrompts((prev) => [...newOnes, ...prev]);
@@ -136,10 +139,10 @@ export function useSyncedPrompts() {
             if (user) {
                 await importPromptsToFirestore(user.uid, newOnes);
             } else {
-                persistLocal([...newOnes, ...prompts]);
+                persistLocal([...newOnes, ...promptsRef.current]);
             }
         },
-        [user, prompts, persistLocal]
+        [user, persistLocal]
     );
 
     return { prompts, loading, savePrompt, updatePrompt, deletePrompt, exportPrompts, importPrompts };

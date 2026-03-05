@@ -8,8 +8,8 @@ import ScoreMeter from "@/components/ui/ScoreMeter";
 
 
 const MODELS = [
-    { name: "GPT-4", icon: "●" },
-    { name: "Claude 3", icon: "●" },
+    { name: "NVIDIA GPT-OSS", icon: "●" },
+    { name: "NVIDIA Qwen", icon: "●" },
     { name: "Gemini Pro", icon: "●" },
 ];
 
@@ -42,18 +42,37 @@ export default function ComparatorPage() {
         MODELS.forEach(m => { newResults[m.name] = { output: "", time: 0, tokens: 0, status: "loading" }; });
         setResults({ ...newResults });
 
-        for (const m of MODELS) {
+        // Run comparisons in parallel or sequence? Let's do parallel for speed
+        await Promise.all(MODELS.map(async (m) => {
             const start = Date.now();
-            const delay = 800 + Math.random() * 1200;
-            await new Promise(r => setTimeout(r, delay));
             try {
-                const mockOut = await mockAIResponse(prompt, m.name);
+                const res = await fetch("/api/generate", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ prompt, model: m.name, temperature: 0.7 })
+                });
+
+                if (!res.ok) throw new Error("API Limit or Error");
+                const data = await res.json();
                 const elapsed = Date.now() - start;
-                setResults(prev => ({ ...prev, [m.name]: { output: mockOut, time: elapsed, tokens: Math.floor(80 + Math.random() * 120), status: "done" as const } }));
-            } catch {
-                setResults(prev => ({ ...prev, [m.name]: { output: "Error", time: 0, tokens: 0, status: "error" } }));
+
+                setResults(prev => ({
+                    ...prev,
+                    [m.name]: {
+                        output: data.output || "No response",
+                        time: elapsed,
+                        tokens: data.tokens?.total || 0,
+                        status: "done" as const
+                    }
+                }));
+            } catch (err) {
+                console.error(`Comparison failed for ${m.name}:`, err);
+                setResults(prev => ({
+                    ...prev,
+                    [m.name]: { output: "Connection failed or API key missing.", time: 0, tokens: 0, status: "error" }
+                }));
             }
-        }
+        }));
     };
 
     return (
@@ -69,9 +88,9 @@ export default function ComparatorPage() {
             {/* Model status badges */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--sp-2)", marginBottom: "var(--sp-4)" }}>
                 {MODELS.map(m => {
-                    const isLive = (m.name.includes("GPT") && apiStatus.openai) ||
-                        (m.name.includes("Gemini") && apiStatus.google) ||
-                        (m.name.includes("Claude") && apiStatus.anthropic);
+                    const isLive = (m.name.includes("GPT") && (apiStatus.openai || apiStatus.nvidia)) ||
+                        (m.name.includes("Qwen") && apiStatus.nvidia) ||
+                        (m.name.includes("Gemini") && apiStatus.google);
                     return (
                         <div key={m.name} style={{ display: "flex", alignItems: "center", gap: "var(--sp-1)", border: "1px solid var(--border)", padding: "4px 10px" }}>
                             <span style={{ fontSize: 9, color: isLive ? "var(--success)" : "var(--text-muted)" }}>●</span>
