@@ -1,0 +1,399 @@
+================================================================================
+          PROMPT ENGINEERING HUB — PROJECT EXPO PRESENTATION SCRIPT
+================================================================================
+
+                        "The AI Whisperer's Toolkit"
+
+================================================================================
+BEFORE YOU BEGIN — WHAT YOU MUST KNOW
+================================================================================
+
+THE ONE-LINER PITCH:
+"We built an interactive platform that teaches anyone how to talk to AI
+ properly — and saves them money doing it."
+
+THE PROBLEM YOU'RE SOLVING:
+Billions of AI API calls happen every day. Most people write prompts by
+trial-and-error. They waste tokens, get bad outputs, and have no idea why.
+There's no single platform that combines LEARNING + BUILDING + TESTING.
+Blog posts don't teach by doing. ChatGPT doesn't teach at all.
+
+YOUR DIFFERENTIATOR:
+This is NOT a chatbot. This is NOT a documentation site. This is an
+interactive LAB where users learn through hands-on exercises, build prompts
+with a structured tool, and test them against real AI models — all in one
+place. Think of it as "Duolingo meets VS Code, but for AI prompts."
+
+KEY NUMBERS TO MEMORIZE:
+  - 10 interactive learning modules with auto-graded exercises
+  - 6 battle-tested prompt templates used by real AI engineers
+  - 4 AI models supported (GPT-4, Claude 3, Gemini Pro, Local LLM)
+  - Side-by-side model comparison in one click
+  - Full prompt management with export/import
+  - Works in both light and dark mode
+  - Fully responsive — works on phone, tablet, desktop
+
+TECH STACK (if asked):
+  Next.js 16, React 19, TypeScript, Framer Motion, Tailwind CSS, localStorage
+
+
+================================================================================
+SECTION 1: THE HOOK — HOMEPAGE (30 seconds)
+================================================================================
+
+WHAT TO SAY:
+"Imagine you're a developer. You just got access to GPT-4's API. You type
+ a prompt. The output is garbage. You try again. Still garbage. You spend
+ 3 hours tweaking words and you've burned through $15 in API credits.
+
+ That's the problem we're solving."
+
+[Point to the hero section]
+
+"Prompt Engineering Hub is an interactive lab — not a blog. You don't just
+ READ about prompts here. You BUILD them, TEST them, and OPTIMIZE them."
+
+[Point to the stats bar]
+
+"10 learning modules. 20+ prompt patterns. 4 AI models. Infinite prompts
+ to build. Everything a developer, marketer, or AI enthusiast needs to
+ master the art of talking to machines."
+
+[Point to the feature list]
+
+"Let me walk you through each tool."
+
+TRANSITION: Click on "Learn" in the navigation.
+
+
+================================================================================
+SECTION 2: LEARN — THE CLASSROOM (60 seconds)
+================================================================================
+
+WHAT TO SAY:
+"This is where it starts. We have 10 progressive modules — from the
+ absolute basics of what a prompt IS, all the way to advanced topics
+ like prompt chaining and multimodal vision prompting."
+
+[Click on Module 1 to expand it]
+
+"Each module has two parts: a LESSON and an EXERCISE. The lesson teaches
+ the theory — what tokens are, how the AI processes your words, what
+ makes a good prompt vs. a bad one."
+
+[Scroll to show the lesson content, then click 'Take the Exercise']
+
+"But reading isn't learning. So every module has a hands-on exercise.
+ We have three types:"
+
+"QUIZZES — test your understanding of key concepts.
+ FIX-THE-PROMPT — we give you a bad prompt, you have to fix it.
+ TOKEN CHALLENGES — optimize a prompt to use fewer tokens while
+ keeping the same output quality."
+
+[Answer the quiz question to show auto-grading]
+
+"The exercises are auto-graded. You get instant feedback on whether
+ you got it right and why. Your progress is saved — you can come back
+ tomorrow and pick up where you left off."
+
+"Modules unlock sequentially. You can't skip ahead — you have to
+ earn your way to the advanced content. This ensures you build a
+ solid foundation."
+
+KEY TALKING POINTS IF ASKED:
+  - Modules 1-5: Fundamentals (prompts, tokens, patterns, few-shot, optimization)
+  - Modules 6-10: Advanced (system prompts, multi-turn, chaining, evaluation, multimodal)
+  - Progress stored in localStorage (persists across sessions)
+  - Grading is instant — no server needed
+
+TRANSITION: "But what if you could actually SEE how AI processes your words?
+ That's what Simulation does." → Click "Simulation" in nav.
+
+
+================================================================================
+SECTION 3: SIMULATION / JOURNEY — THE WOW FACTOR (90 seconds)
+================================================================================
+
+*** THIS IS YOUR SHOWSTOPPER. SPEND THE MOST TIME HERE. ***
+
+WHAT TO SAY:
+"This is the feature that makes us different from everything else out there.
+ Most platforms tell you WHAT a token is. We SHOW you."
+
+[Stage 1 — Live Tokenizer]
+
+"Type any text and watch it get broken down into tokens in real-time.
+ See how 'unbelievable' becomes ['un', 'believ', 'able']. Every colored
+ block is one token — and every token costs money."
+
+[Type something like "Artificial intelligence is transforming the world"]
+
+"Notice how common words like 'the' are one token, but technical terms
+ get split into pieces. This is why prompt optimization matters — the
+ fewer tokens you use, the less you pay."
+
+[Stage 2 — BPE Encoding]
+
+"This is Byte-Pair Encoding — the actual algorithm GPT uses to turn text
+ into tokens. Watch it step by step: it starts with individual characters,
+ finds the most common pairs, merges them, and repeats. This is not a
+ simulation — this is how it actually works."
+
+[Stage 3 — Cost Calculator]
+
+"Now here's the business case. Same prompt, four different models. Look at
+ the cost difference."
+
+[Point to the price comparison]
+
+"GPT-4 costs 30x more than GPT-3.5 for the same input. If you're making
+ 10,000 API calls a day, that's the difference between a $50 monthly bill
+ and a $1,500 monthly bill. Choosing the right model for the right task
+ is not optional — it's survival."
+
+[Stage 4 — Attention Map]
+
+"This visualizes how tokens relate to each other. The AI doesn't read
+ left to right like we do — it looks at ALL tokens simultaneously and
+ measures how much each one should 'pay attention' to every other one.
+ That's the transformer architecture in action."
+
+[Stage 5 — Generation]
+
+"And finally, generation. Watch the AI produce output one token at a time.
+ Toggle between DETERMINISTIC mode — where it always picks the most
+ likely next token — and CREATIVE mode, where it introduces randomness.
+ That's what the 'temperature' slider does in every AI API."
+
+KEY TALKING POINTS IF ASKED:
+  - Tokenization is regex-based (approximation, not tiktoken — noted as future work)
+  - BPE visualization is step-by-step, not just final result
+  - Cost calculator uses real pricing from OpenAI, Anthropic, Google
+  - All interactive — user types their own text
+
+TRANSITION: "Now you understand HOW AI works. Let's BUILD something." → Click "Builder"
+
+
+================================================================================
+SECTION 4: BUILDER — THE CONSTRUCTION ZONE (45 seconds)
+================================================================================
+
+WHAT TO SAY:
+"Most people write prompts as one big paragraph. That's like writing code
+ without functions — it works, but it's fragile and hard to improve."
+
+[Point to the form fields]
+
+"The Builder breaks a prompt into 7 components: Goal, Context, Input Data,
+ Output Format, Constraints, Tone, and Model Type. Fill in what you know,
+ and we assemble it into a professional-grade structured prompt."
+
+[Fill in a quick example]
+  Goal: "Summarize customer feedback into action items"
+  Context: "E-commerce company, post-purchase surveys"
+  Output Format: Select "Bullet points"
+  Tone: Select "Professional"
+  Model: Select "GPT-4"
+
+[Click Generate]
+
+"Watch — it generates a complete prompt with clear sections and structure."
+
+[Point to the score]
+
+"And it SCORES your prompt. This score is based on how many structural
+ elements are present — role definition, clear instructions, format
+ specification, constraints. A score above 70 means you're writing
+ production-quality prompts."
+
+[Point to the action buttons]
+
+"You can copy it, save it to your dashboard, or send it directly to
+ the Playground to test it live."
+
+TRANSITION: "Let's test it." → Click "Send to Playground"
+
+
+================================================================================
+SECTION 5: PLAYGROUND / LAB — THE TESTING GROUND (45 seconds)
+================================================================================
+
+WHAT TO SAY:
+"This is where prompts meet reality. Pick a model, set the temperature,
+ set the max output length, and hit Run."
+
+[Show the prompt that was sent from Builder]
+
+"The prompt we just built is already loaded. Let me run it."
+
+[Click Run]
+
+"You get the output with timing data and token counts. But here's the
+ powerful part —"
+
+[Point to history panel]
+
+"Every run is saved to history. You can compare different versions of
+ the same prompt, try different models, and see which combination gives
+ the best result for the lowest cost."
+
+[Point to Save button]
+
+"When you find a prompt that works, save it to your dashboard for reuse."
+
+KEY TALKING POINTS IF ASKED:
+  - Temperature controls randomness (0 = deterministic, 1 = creative)
+  - Max tokens limits response length
+  - History keeps last 10 runs
+  - Currently uses mock API (real API integration is the next milestone)
+
+TRANSITION: "But what if you don't want to start from scratch?" → Click "Patterns"
+
+
+================================================================================
+SECTION 6: PATTERNS — THE COOKBOOK (30 seconds)
+================================================================================
+
+WHAT TO SAY:
+"These are 6 battle-tested prompt patterns used by professional AI engineers
+ every day."
+
+[Expand one pattern, e.g., Chain of Thought]
+
+"Chain of Thought — instead of asking the AI to give you the answer directly,
+ you ask it to think step by step. This single technique improves accuracy
+ on reasoning tasks by 20-40%."
+
+[Show the template]
+
+"Each pattern comes with a real template you can copy, the use case it's
+ designed for, and a 'Use in Playground' button that loads it directly
+ into the testing environment."
+
+"ReAct, Role Prompting, Few-Shot Learning, JSON Structured Output,
+ Guardrails — these aren't theory. These are production patterns used by
+ companies building AI products right now."
+
+TRANSITION: "What if you want to compare models?" → Click "Compare"
+
+
+================================================================================
+SECTION 7: COMPARATOR — THE DECISION MAKER (30 seconds)
+================================================================================
+
+WHAT TO SAY:
+"Same prompt. Three models. One click."
+
+[Type a prompt and click Compare]
+
+"GPT-4, Claude 3, and Gemini Pro — running the same prompt simultaneously.
+ You see the output, the response time, and the token count for each."
+
+"This answers the question every developer asks: 'Which model should I use?'
+ The answer is: it depends on the task, and the Comparator shows you why."
+
+TRANSITION: "And everything you build gets saved here." → Click "Saved"
+
+
+================================================================================
+SECTION 8: DASHBOARD — THE VAULT (20 seconds)
+================================================================================
+
+WHAT TO SAY:
+"Every prompt you build, test, and save lives in your Dashboard. Search,
+ filter by tags, edit inline, or send any prompt back to the Playground
+ for more testing."
+
+[Show Export/Import buttons]
+
+"And for team collaboration — export your entire prompt library as JSON
+ and share it with colleagues. Import someone else's library to learn
+ from how they structure their prompts."
+
+TRANSITION: "Let me wrap up."
+
+
+================================================================================
+SECTION 9: THE CLOSE — DARK MODE + RESPONSIVE (15 seconds)
+================================================================================
+
+WHAT TO SAY:
+"Two more things. Dark mode."
+
+[Toggle dark mode]
+
+"Because engineers work at night. And —"
+
+[If possible, show on phone or resize browser]
+
+"Fully responsive. Every page, every feature, works on mobile. Because
+ you should be able to iterate on a prompt from anywhere."
+
+
+================================================================================
+SECTION 10: THE CLOSER — WHAT'S NEXT (20 seconds)
+================================================================================
+
+WHAT TO SAY:
+"What you're seeing today is version one. Here's what's coming:
+
+ Real API integration — connect your own OpenAI, Anthropic, or Google
+ API key and test prompts against live models.
+
+ User accounts — save your progress and prompts in the cloud, access
+ from any device.
+
+ Community patterns — submit your own prompt templates and vote on
+ the best ones.
+
+ This is the beginning of making prompt engineering accessible to everyone."
+
+FINAL LINE:
+"We didn't build a chatbot. We built the toolkit that makes you better
+ at using every chatbot. Thank you."
+
+
+================================================================================
+APPENDIX: TOUGH QUESTIONS & ANSWERS
+================================================================================
+
+Q: "Why not just use ChatGPT to learn prompting?"
+A: "ChatGPT doesn't teach you tokenization costs, model differences, or
+    structured prompt design. It's like learning coding by only using
+    a compiler — you need a textbook + a lab. We're both."
+
+Q: "The API is mocked — is this really useful?"
+A: "The mock API demonstrates the full UX flow. Real API integration is
+    one environment variable away — we built the architecture for it.
+    The learning modules, builder, and patterns work independently of
+    the API and provide immediate value."
+
+Q: "Who is this for?"
+A: "Three audiences: (1) Developers integrating AI APIs into products.
+    (2) Non-technical users who want to get better results from ChatGPT.
+    (3) Teams who need to standardize how they write prompts."
+
+Q: "How is this different from PromptPerfect / PromptBase?"
+A: "PromptPerfect optimizes prompts but doesn't teach you. PromptBase
+    sells prompts but doesn't help you build your own. We do both:
+    education + tooling, for free, in the browser."
+
+Q: "What's the business model?"
+A: "Open source educational tool. Future monetization through premium
+    learning paths, team collaboration features, and hosted API proxy
+    with cost analytics."
+
+================================================================================
+END OF PRESENTATION SCRIPT
+================================================================================
+
+TOTAL ESTIMATED TIME: 6-7 minutes (expandable to 10-12 with Q&A)
+
+GOLDEN RULES:
+  1. ALWAYS demo live — never show screenshots
+  2. TYPE in real text during the Simulation — don't use pre-loaded examples
+  3. Let the Simulation section breathe — this is your wow moment
+  4. If running short on time, skip Comparator and Dashboard
+  5. End on "We built the toolkit" — not "We built a website"
+  6. Toggle dark mode at the end — it's a crowd-pleaser

@@ -61,10 +61,10 @@ export function getScoreLabel(score: number): {
     label: string;
     color: string;
 } {
-    if (score >= 80) return { label: "Excellent", color: "text-green-400" };
-    if (score >= 60) return { label: "Good", color: "text-blue-400" };
-    if (score >= 40) return { label: "Fair", color: "text-yellow-400" };
-    return { label: "Needs Work", color: "text-red-400" };
+    if (score >= 80) return { label: "Excellent", color: "var(--success)" };
+    if (score >= 60) return { label: "Good", color: "var(--text-primary)" };
+    if (score >= 40) return { label: "Fair", color: "var(--text-secondary)" };
+    return { label: "Needs Work", color: "var(--error)" };
 }
 
 const MOCK_RESPONSES: Record<string, string[]> = {
@@ -108,4 +108,24 @@ export async function mockAIResponse(
 export function countTokens(text: string): number {
     // Rough approximation: 1 token ≈ 4 chars
     return Math.ceil(text.length / 4);
+}
+export const DEFAULT_PROMPTS = [
+    "You are a Senior Python Developer. Review the following code for performance bottlenecks and provide specific refactoring suggestions:\n\n[PASTE CODE HERE]",
+    "Act as a professional creative writing coach. Read my short story snippet and provide feedback on character voice and sensory descriptions:\n\n[PASTE STORY HERE]",
+    "Generate 5 high-impact marketing taglines for a new sustainable sneakers brand called 'EcoStep'. Focus on comfort and zero-carbon footprint.",
+    "Summarize this technical documentation for a non-technical stakeholder. Focus on business value and expected outcomes:\n\n[PASTE DOC HERE]",
+    "You are an expert SQL Optimizer. Explain why this query might be slow and provide an optimized version using appropriate indexes:\n\n[PASTE SQL HERE]",
+    "Act as a Socratic teacher. Help me understand the concept of Quantum Entanglement by asking me three guided questions instead of giving a direct explanation.",
+    "Draft a React functional component for a dynamic data table with sorting and filtering capabilities using only vanilla CSS and standard hooks.",
+    "You are Leonardo da Vinci. Respond to a curious 21st-century child who just asked you how you feel about modern airplanes.",
+    "Create a detailed 3-day travel itinerary for a first-time visitor to Tokyo who loves hidden gems, cyberpunk aesthetics, and street food.",
+    "Write a robust Bash script that backups a directory to a remote server via rsync, handles errors, and sends an email notification on failure."
+];
+
+export function checkLiveMode() {
+    return {
+        openai: !!process.env.OPENAI_API_KEY,
+        google: !!process.env.GOOGLE_AI_API_KEY,
+        anthropic: !!process.env.ANTHROPIC_API_KEY,
+    };
 }

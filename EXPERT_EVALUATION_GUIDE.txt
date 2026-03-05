@@ -1,0 +1,689 @@
+================================================================================
+   PROMPT ENGINEERING HUB — INDUSTRY EXPERT EVALUATION & EXPLANATION GUIDE
+================================================================================
+
+   Written from the perspective of a Senior AI Engineer / Principal ML
+   Engineer who has built production LLM systems, fine-tuned models, and
+   deployed prompt pipelines at scale.
+
+================================================================================
+PART 1: WHAT I WOULD EXPECT AS AN EVALUATOR
+================================================================================
+
+When I look at a student project called "Prompt Engineering Hub", I'm not
+looking for a wrapper around ChatGPT. I'm looking for PROOF that the student
+understands how language models actually work, why prompt engineering exists
+as a discipline, and what engineering rigor looks like when applied to
+natural language interfaces.
+
+Here's my evaluation rubric:
+
+──────────────────────────────────────────────────────────────────────────
+
+1. DOES THE STUDENT UNDERSTAND TOKENIZATION? [Weight: 15%]
+──────────────────────────────────────────────────────────────────────────
+
+What I expect:
+  - Demonstrate that text is NOT processed as words or characters
+  - Show that GPT uses Byte-Pair Encoding (BPE), not word splitting
+  - Explain that "tokenization" directly impacts cost and context limits
+  - Know that different models use different tokenizers (cl100k_base for
+    GPT-4, Claude's tokenizer is different, Gemini uses SentencePiece)
+
+What this project demonstrates:
+  ✅ Live tokenizer — type text, see tokens highlighted in real-time
+  ✅ BPE step-by-step visualizer — shows merge operations visually
+  ✅ Token count → cost calculator — four models side by side
+  ✅ Visual proof that "unbelievable" ≠ 1 token
+
+What the student should SAY:
+  "A tokenizer breaks text into subword units. GPT doesn't see words —
+   it sees tokens. The word 'unbelievable' becomes three tokens: 'un',
+   'believ', 'able'. This matters because:
+   1. Every token costs money (GPT-4: $0.03/1K input tokens)
+   2. Every model has a context window measured in tokens (GPT-4: 128K)
+   3. Badly tokenized prompts waste both money and context space.
+
+   Our Simulation page lets you type any text and see this happen
+   in real-time. The BPE visualizer shows the actual algorithm —
+   starting from individual bytes, finding the most frequent pair,
+   merging, and repeating."
+
+──────────────────────────────────────────────────────────────────────────
+
+2. DOES THE STUDENT UNDERSTAND ATTENTION MECHANISMS? [Weight: 10%]
+──────────────────────────────────────────────────────────────────────────
+
+What I expect:
+  - Know that transformers process ALL tokens simultaneously (not L→R)
+  - Understand that self-attention computes relevance between every
+    pair of tokens using Query, Key, Value matrices
+  - Know that multi-head attention allows the model to focus on
+    different aspects of the input simultaneously
+  - Understand that this is WHY word order matters in prompts
+
+What this project demonstrates:
+  ✅ Attention heatmap visualization in the Simulation page
+  ✅ Interactive — users see how tokens relate to each other
+
+What the student should SAY:
+  "The transformer architecture doesn't read left-to-right like humans.
+   It uses self-attention: for every token in the input, it computes
+   an attention score against every other token. This is calculated as:
+
+   Attention(Q,K,V) = softmax(QK^T / √d_k) × V
+
+   Where Q, K, V are learned projection matrices. The softmax
+   normalizes the scores so they sum to 1, creating a probability
+   distribution of 'how much should I pay attention to each other
+   token when processing this one.'
+
+   In our visualization, each cell in the heatmap shows this attention
+   weight. Darker cells mean stronger attention — meaning those two
+   tokens are more relevant to each other.
+
+   This is why prompt engineering works: by changing the order and
+   structure of words, we directly influence these attention patterns,
+   guiding the model to focus on what matters."
+
+──────────────────────────────────────────────────────────────────────────
+
+3. DOES THE STUDENT UNDERSTAND GENERATION / DECODING? [Weight: 10%]
+──────────────────────────────────────────────────────────────────────────
+
+What I expect:
+  - Know that LLMs are autoregressive — they predict ONE token at a time
+  - Understand temperature: T=0 (greedy/deterministic) vs T=1 (diverse)
+  - Know what top-p (nucleus sampling) does
+  - Understand that the model outputs a probability distribution over its
+    entire vocabulary (~100K tokens) for each next-token prediction
+
+What this project demonstrates:
+  ✅ Generation simulation — token-by-token output with animation
+  ✅ Deterministic vs Creative toggle (temperature concept)
+  ✅ Temperature slider in the Playground
+
+What the student should SAY:
+  "Language models don't generate text — they generate probability
+   distributions. For each position, the model outputs a vector of
+   ~100,000 probabilities, one for each token in its vocabulary.
+
+   Temperature controls how 'peaked' this distribution is:
+   - T=0: Always picks the highest-probability token (greedy decoding)
+   - T=0.7: Slightly random, balancing quality and diversity
+   - T=1.0: Full softmax distribution, more creative but less reliable
+   - T>1.0: Flattens the distribution, making rare tokens more likely
+
+   Mathematically: P(token_i) = exp(logit_i / T) / Σ exp(logit_j / T)
+
+   In our Playground, you can set the temperature before running a
+   prompt and observe how the same prompt produces different outputs
+   at different temperatures. The Simulation page shows this process
+   token-by-token."
+
+──────────────────────────────────────────────────────────────────────────
+
+4. DOES THE STUDENT UNDERSTAND PROMPT STRUCTURE? [Weight: 20%]
+──────────────────────────────────────────────────────────────────────────
+
+What I expect:
+  - Know the difference between system prompt, user prompt, and
+    assistant context in a multi-turn conversation
+  - Understand that structured prompts outperform unstructured ones
+    because they reduce ambiguity in the attention distribution
+  - Know at least 4 prompt patterns (CoT, Few-Shot, Role, ReAct)
+  - Understand WHY these patterns work at a mechanistic level
+
+What this project demonstrates:
+  ✅ Builder with 7-component structured form
+  ✅ Quality scoring algorithm that rewards structure
+  ✅ 6 prompt patterns with templates
+  ✅ 10 learning modules covering fundamentals to advanced
+
+What the student should SAY:
+  "A prompt is an engineering artifact, not a sentence. Professional
+   prompt engineers decompose prompts into components:
+
+   1. SYSTEM PROMPT — Sets the model's persona and constraints.
+      This works because the system message occupies early positions
+      in the attention window, establishing strong attention patterns
+      that influence every subsequent token.
+
+   2. ROLE DEFINITION — 'You are a senior data scientist' triggers
+      the model to activate related knowledge clusters. This works
+      because during pre-training, content about data science was
+      often preceded by author credentials, creating a learned
+      association between role context and expertise-level output.
+
+   3. FEW-SHOT EXAMPLES — Providing 2-3 input/output examples
+      works because of in-context learning: the model's attention
+      mechanism identifies patterns across examples and applies
+      them to the new input. This is emergent behavior — it wasn't
+      explicitly trained, it arises from the architecture.
+
+   4. CHAIN OF THOUGHT — Asking the model to 'think step by step'
+      works because it forces the model to generate intermediate
+      reasoning tokens. These tokens then appear in the attention
+      window for subsequent tokens, creating a chain of logical
+      dependencies. Without CoT, the model must compute the answer
+      in a single forward pass — for complex problems, that's
+      insufficient.
+
+   5. OUTPUT FORMAT — Specifying 'respond in JSON' or 'use bullet
+      points' constrains the generation space, reducing the
+      probability mass allocated to wrong-format tokens.
+
+   Our Builder enforces this structure. The scoring algorithm
+   checks for the presence of each component and rates the prompt
+   0-100 based on structural completeness."
+
+──────────────────────────────────────────────────────────────────────────
+
+5. DOES THE STUDENT UNDERSTAND COST ENGINEERING? [Weight: 10%]
+──────────────────────────────────────────────────────────────────────────
+
+What I expect:
+  - Know price-per-token for major models
+  - Understand input tokens vs output tokens pricing difference
+  - Know that prompt optimization directly reduces costs
+  - Demonstrate that model selection depends on task complexity
+
+What this project demonstrates:
+  ✅ Cost calculator comparing 4 models in the Simulation page
+  ✅ Comparator showing output quality across models
+  ✅ Token counting in the Playground
+
+What the student should SAY:
+  "API costs are asymmetric:
+   - GPT-4 Turbo: $10/M input, $30/M output
+   - GPT-3.5 Turbo: $0.50/M input, $1.50/M output
+   - Claude 3 Sonnet: $3/M input, $15/M output
+   - Gemini Pro: $0.50/M input, $1.50/M output
+
+   For 10,000 API calls/day with 500-token prompts:
+   - GPT-4: ~$150/day → $4,500/month
+   - GPT-3.5: ~$7.50/day → $225/month
+
+   Our Cost Calculator visualizes this. The Comparator lets you
+   see: does GPT-4 give better output for THIS specific task?
+   Often, GPT-3.5 or Gemini Pro is sufficient for classification,
+   summarization, and extraction tasks. GPT-4 shines on reasoning,
+   code generation, and nuanced analysis.
+
+   The right strategy is: prototype on GPT-4, then downgrade to
+   the cheapest model that maintains acceptable quality."
+
+──────────────────────────────────────────────────────────────────────────
+
+6. ENGINEERING QUALITY [Weight: 20%]
+──────────────────────────────────────────────────────────────────────────
+
+What I expect:
+  - TypeScript, not JavaScript (type safety catches bugs)
+  - Component architecture (reusable, testable)
+  - State management strategy (hooks, context, persistence)
+  - Authentication + cloud persistence (production readiness)
+  - Responsive design (judges use various devices)
+  - Accessibility (ARIA, keyboard nav, screen reader support)
+  - Error handling (network failures, API errors, rate limits)
+
+What this project demonstrates:
+  ✅ TypeScript throughout
+  ✅ Next.js App Router with proper file architecture
+  ✅ Custom hooks (useTheme, useAuth, useSyncedPrompts, useSyncedProgress)
+  ✅ Firebase Auth (Google sign-in) + Firestore persistence
+  ✅ Hybrid data layer (localStorage fallback when not signed in)
+  ✅ Auto-migration from localStorage → Firestore on first sign-in
+  ✅ Dark mode with CSS custom properties
+  ✅ Responsive design with mobile breakpoints
+  ✅ ARIA labels, focus-visible, semantic HTML
+  ✅ Error handling with retry buttons and aria-live output
+  ✅ 3D WebGL landing page (Three.js particle wave)
+
+What the student should SAY:
+  "The architecture follows a clean separation of concerns:
+
+   /app         — Route pages (Next.js App Router)
+   /components  — Reusable UI components
+   /lib         — Business logic, hooks, and services
+   /styles      — CSS design system with variables
+
+   For data persistence, we use a HYBRID approach:
+   - Signed out → localStorage (works offline, no account needed)
+   - Signed in → Firebase Firestore (cloud sync, cross-device)
+   - First sign-in triggers automatic migration — existing
+     localStorage data moves to Firestore seamlessly.
+
+   The custom hooks (useSyncedPrompts, useSyncedProgress)
+   abstract this completely — page components don't know or care
+   whether data comes from localStorage or Firestore.
+
+   Authentication uses Firebase Auth with Google as the provider.
+   The AuthProvider context wraps the entire app, and the UserMenu
+   component conditionally renders based on firebaseReady — meaning
+   the entire auth system is zero-configuration: if Firebase env
+   vars are missing, the app works exactly as before."
+
+──────────────────────────────────────────────────────────────────────────
+
+7. INNOVATION / UNIQUE VALUE [Weight: 15%]
+──────────────────────────────────────────────────────────────────────────
+
+What I expect:
+  - Something I haven't seen before in a student project
+  - Technical depth beyond surface-level implementation
+  - Clear value proposition for real users
+
+What this project demonstrates:
+  ✅ 3D particle wave landing page — immediate visual impact
+  ✅ BPE algorithm visualized step-by-step — no other platform does this
+  ✅ Attention heatmap — making transformer internals tangible
+  ✅ Token-by-token generation simulation — exactly how autoregressive
+     decoding works under the hood
+  ✅ Prompt quality scoring — novel metric for prompt structure
+  ✅ Full pipeline: Learn → Simulate → Build → Test → Compare → Save
+  ✅ No other platform combines education + tooling in one place
+
+
+================================================================================
+PART 2: HOW THE STUDENT SHOULD EXPLAIN THE PROJECT
+================================================================================
+
+──────────────────────────────────────────────────────────────────────────
+STEP 1: THE OPENING (30 seconds)
+──────────────────────────────────────────────────────────────────────────
+
+"Good [morning/afternoon]. I built the Prompt Engineering Hub — an
+interactive platform where users don't just READ about prompt engineering,
+they DO it.
+
+The AI industry has a $4.6 billion annual API spend problem: most of
+that money is wasted on badly written prompts. My platform solves this
+by combining education, professional tooling, and real-time testing in
+one unified experience."
+
+──────────────────────────────────────────────────────────────────────────
+STEP 2: THE TECHNICAL FOUNDATION (2 minutes)
+──────────────────────────────────────────────────────────────────────────
+
+[Open the Simulation page]
+
+"Before you can engineer prompts, you need to understand how LLMs
+actually process text. Let me show you."
+
+[Stage 1 — Tokenizer]
+"Every piece of text is broken into tokens using Byte-Pair Encoding.
+This is not word splitting — it's a subword algorithm. Watch as I type
+'unbelievable' — it becomes three tokens: 'un', 'believ', 'able'.
+Each token has a cost. GPT-4 charges $10 per million input tokens."
+
+[Stage 2 — BPE]
+"Here's the actual algorithm. BPE starts with individual characters,
+finds the most frequent adjacent pair, merges them into one token, and
+repeats. This builds a vocabulary of ~100,000 subword units that can
+represent any text efficiently."
+
+[Stage 3 — Cost Calculator]
+"Same 500-token prompt, four models. GPT-4 costs $0.005. GPT-3.5 costs
+$0.00025. That's a 20x difference. At production scale — 10,000 calls/day
+— that becomes $4,500/month vs $225/month."
+
+[Stage 4 — Attention]
+"After tokenization, the transformer computes self-attention. The
+formula is: Attention = softmax(QK^T / √d_k) × V. Each cell in this
+heatmap shows how much one token 'pays attention' to another. This is
+why word ORDER matters in prompts — it directly shapes the attention
+distribution that drives output generation."
+
+[Stage 5 — Generation]
+"Finally, generation. The model predicts one token at a time — it's
+autoregressive. At each step it outputs a probability distribution over
+its entire vocabulary. Temperature controls how peaked this distribution
+is. T=0 means always pick the most likely token. T=1 means sample from
+the full distribution. This is why the same prompt can produce different
+outputs."
+
+──────────────────────────────────────────────────────────────────────────
+STEP 3: THE EDUCATIONAL PLATFORM (1 minute)
+──────────────────────────────────────────────────────────────────────────
+
+[Open Learn page]
+
+"The learning experience is 10 progressive modules. Let me show module 4:
+Few-Shot Learning."
+
+[Open the module content]
+
+"The lesson teaches the theory — what few-shot prompting is, why it
+works (in-context learning via the attention mechanism), and when to
+use it. Then there's a graded exercise."
+
+[Show the exercise]
+
+"We have three exercise types:
+ - Quizzes that test conceptual understanding
+ - Fix-the-Prompt challenges where you improve a bad prompt
+ - Token optimization challenges where you reduce token count
+   while maintaining output quality
+
+Progress is auto-saved. If you're signed in with Firebase, it syncs
+across devices."
+
+──────────────────────────────────────────────────────────────────────────
+STEP 4: THE TOOLING PIPELINE (2 minutes)
+──────────────────────────────────────────────────────────────────────────
+
+[Open Builder]
+
+"Most users write prompts as a single paragraph. That's like writing
+code without functions. Our Builder decomposes prompts into 7 components."
+
+[Fill in: Goal = "Extract key insights from meeting transcripts",
+ Context = "Enterprise SaaS company, weekly product meetings",
+ Output Format = "JSON object",
+ Tone = "Professional", Model = "GPT-4"]
+
+[Click Generate]
+
+"It assembles a structured prompt with clear sections. And it SCORES
+the prompt — this scoring algorithm checks for role definition, clear
+instructions, format specification, constraints, and examples.
+A score above 70 is production-quality."
+
+[Click Send to Playground]
+
+"Now we test it. I can set the temperature, choose the model, and hit Run."
+
+[Click Run]
+
+"Output appears with token counts and response time. Every run is saved
+to history. I can iterate — change a word, run again, compare results."
+
+[Navigate to Patterns]
+
+"And if you don't want to start from scratch, we have 6 battle-tested
+patterns. Chain of Thought, ReAct, Role Prompting, Few-Shot, JSON
+Structured Output, and Guardrails. Each has a template and a one-click
+'Use in Playground' button."
+
+[Navigate to Comparator]
+
+"The Comparator answers the most common question: which model should I
+use? Same prompt, three models, one click. You see the output, the
+response time, and the cost side by side."
+
+──────────────────────────────────────────────────────────────────────────
+STEP 5: THE INFRASTRUCTURE (1 minute)
+──────────────────────────────────────────────────────────────────────────
+
+"Let me talk about how this is built."
+
+"Next.js 16 with React 19 and TypeScript. The architecture uses:
+
+ - Custom hooks for all state management (useTheme, useAuth,
+   useSyncedPrompts, useSyncedProgress)
+ - Firebase Auth for Google sign-in
+ - Firestore for cloud persistence with a HYBRID fallback to
+   localStorage when the user isn't signed in
+ - Automatic data migration on first sign-in — existing local prompts
+   and progress move to the cloud seamlessly
+ - CSS custom properties for theming — toggle dark mode and every
+   element updates instantly because they all reference variables
+ - Three.js for the 3D particle wave on the landing page
+ - Responsive design with mobile breakpoints
+ - ARIA accessibility throughout"
+
+──────────────────────────────────────────────────────────────────────────
+STEP 6: THE CLOSE (30 seconds)
+──────────────────────────────────────────────────────────────────────────
+
+"To summarize: most platforms either teach you about prompts OR give
+you tools to write them. Nobody does both. Prompt Engineering Hub
+combines 10 interactive learning modules, 5 visualization tools, a
+structured prompt builder, a live playground, 6 professional templates,
+a model comparator, and cloud-synced prompt management — all in one
+application.
+
+This isn't a blog post about prompt engineering. This is the engineering
+toolkit that makes you better at every AI interaction."
+
+
+================================================================================
+PART 3: DEEP TECHNICAL QUESTIONS AN EVALUATOR WILL ASK
+================================================================================
+
+These go beyond the basics. If a student can answer these, they
+demonstrate genuine understanding, not surface-level memorization.
+
+──────────────────────────────────────────────────────────────────────────
+
+Q1: "Why does Chain of Thought prompting work at a mechanistic level?"
+
+A: "CoT works because LLMs are autoregressive — each token is generated
+    conditioned on all previous tokens. When you force the model to
+    generate intermediate reasoning steps, those step-tokens become part
+    of the context window for subsequent predictions.
+
+    For example, to solve 'If A=3 and B=A+2, what is B²?':
+    - Without CoT: The model must compute A=3, B=5, B²=25 in a SINGLE
+      forward pass through 96 transformer layers. This is possible for
+      simple arithmetic but fails for multi-step reasoning because the
+      model's hidden state doesn't have enough 'compute steps.'
+    - With CoT: The model first generates 'A=3' (now visible in context),
+      then 'B=3+2=5' (using A from context), then 'B²=5²=25' (using B
+      from context). Each step is a separate forward pass with the
+      previous result in the attention window.
+
+    CoT effectively gives the model more 'serial computation depth' by
+    converting parallel internal computation into sequential token
+    generation. This is related to the concept of 'chain-of-thought
+    faithfulness' — whether the model's generated reasoning actually
+    reflects its internal computation."
+
+──────────────────────────────────────────────────────────────────────────
+
+Q2: "What's the difference between fine-tuning and prompt engineering?
+     When would you choose one over the other?"
+
+A: "They solve different problems on the adaptation spectrum:
+
+    PROMPT ENGINEERING:
+    - Zero training cost, instant iteration
+    - Works with any API (no model access needed)
+    - Limited by context window size
+    - Per-request latency is higher (longer prompts = more tokens)
+    - Best for: variable tasks, rapid prototyping, when you need
+      to change behavior frequently
+
+    FINE-TUNING:
+    - Requires training data (hundreds to thousands of examples)
+    - Training costs $5-100+ depending on model size
+    - Results in a specialized model with shorter prompts needed
+    - Lower per-request latency and cost (don't need long prompts)
+    - Best for: repetitive tasks, brand voice, domain-specific
+      formatting, when consistency matters
+
+    In practice, the best approach is: start with prompt engineering,
+    measure quality, then fine-tune if quality plateaus and the task
+    is high-volume. A well-engineered prompt on GPT-4 often matches
+    a fine-tuned GPT-3.5 — it's a cost/quality tradeoff.
+
+    Our platform focuses on prompt engineering because it's the
+    universal skill — you need it regardless of whether you eventually
+    fine-tune."
+
+──────────────────────────────────────────────────────────────────────────
+
+Q3: "Explain the hybrid data persistence architecture."
+
+A: "We use a three-layer strategy:
+
+    Layer 1: LOCAL STATE (React useState/useEffect)
+    → Immediate UI responsiveness, zero latency
+
+    Layer 2: LOCAL STORAGE (browser)
+    → Persistence across page reloads, works offline
+    → Used when user is NOT signed in
+
+    Layer 3: FIRESTORE (cloud)
+    → Cross-device sync, data backup
+    → Used when user IS signed in
+
+    The hybrid hooks (useSyncedPrompts, useSyncedProgress) abstract
+    this completely. They check useAuth().user:
+    - If user exists → read/write Firestore
+    - If user is null → read/write localStorage
+
+    On first sign-in, migrateLocalDataToFirestore() runs:
+    1. Reads all localStorage data
+    2. Batch-writes it to Firestore (using writeBatch for atomicity)
+    3. Clears localStorage to avoid data duplication
+
+    This means the app has zero configuration burden on the user:
+    - Works immediately without sign-in (localStorage)
+    - Upgrades seamlessly when they sign in (Firestore)
+    - Existing data is never lost during the transition"
+
+──────────────────────────────────────────────────────────────────────────
+
+Q4: "How does the prompt scoring algorithm work, and what are its
+     limitations?"
+
+A: "The scorePrompt function in lib/promptHelpers.ts performs STRUCTURAL
+    analysis, not semantic analysis. It checks for:
+
+    Component         Points    Detection Method
+    ─────────────────────────────────────────────
+    Role definition    +15      Regex: 'you are', 'act as'
+    Clear instruction  +20      Length > 20 chars, imperative verbs
+    Context            +15      Keywords: 'context', 'background'
+    Output format      +15      Keywords: 'format', 'json', 'list'
+    Constraints        +10      Keywords: 'must', 'don't', 'max'
+    Examples           +15      Pattern: 'example', 'input:', 'output:'
+    Tone specification +10      Keywords: 'tone', 'formal', 'casual'
+    ─────────────────────────────────────────────
+    Maximum            100
+
+    LIMITATIONS:
+    1. It's syntactic, not semantic — 'be professional' scores points
+       for tone even if the rest of the prompt is nonsensical
+    2. No evaluation of prompt EFFECTIVENESS — just structure
+    3. Regex-based detection can miss creative phrasing
+    4. Doesn't consider model-specific best practices
+
+    A real production scorer would use an LLM-as-judge approach:
+    send the prompt to GPT-4 with a meta-prompt asking it to rate
+    clarity, specificity, and structural completeness. That requires
+    API access, which is our next milestone."
+
+──────────────────────────────────────────────────────────────────────────
+
+Q5: "What happens when you exceed a model's context window?"
+
+A: "Context window overflow is one of the most common production failures.
+
+    When the total tokens (system prompt + user prompt + conversation
+    history + expected output) exceed the model's window:
+    - GPT-4 Turbo: 128K tokens
+    - Claude 3: 200K tokens
+    - Gemini Pro: 32K tokens
+
+    The API returns an error. The prompt is NOT silently truncated
+    (unlike some local models that use a sliding window).
+
+    Mitigation strategies:
+    1. PROMPT OPTIMIZATION — reduce token count while preserving meaning
+       (our Learn module 5 teaches this)
+    2. RAG (Retrieval Augmented Generation) — instead of stuffing
+       everything into the prompt, retrieve only relevant chunks
+    3. SUMMARIZATION CHAINS — summarize long inputs before prompting
+    4. PROMPT CHAINING — break complex tasks into smaller prompts
+       (our Learn module 8 covers this)
+
+    Our tokenizer visualization helps users monitor token counts
+    before they hit API limits."
+
+──────────────────────────────────────────────────────────────────────────
+
+Q6: "Why did you use CSS custom properties instead of Tailwind for
+     theming, and how does your dark mode work under the hood?"
+
+A: "CSS custom properties (variables) are a better primitive for theming
+    than Tailwind's class-based approach because they allow RUNTIME
+    changes without recomputation.
+
+    The dark mode works in four layers:
+
+    1. CSS VARIABLES defined in styles/variables.css:
+       :root { --bg-primary: #FAFAFA; --text-primary: #0A0A0A; }
+       [data-theme='dark'] { --bg-primary: #0A0A0A; --text-primary: #F5F5F5; }
+
+    2. REACT CONTEXT (ThemeProvider) manages the state:
+       - Reads system preference via matchMedia
+       - Reads saved preference from localStorage
+       - Updates document.documentElement.setAttribute('data-theme', theme)
+
+    3. ALL COMPONENTS reference variables:
+       .btn { color: var(--text-primary); border: 2px solid var(--border); }
+       → No component needs to know about dark mode. The variables handle it.
+
+    4. THREE.JS INTEGRATION — DottedSurface recreates particles when
+       theme changes, using light-gray dots (200,200,200) for dark mode
+       and black dots (0,0,0) for light mode.
+
+    The toggle is instant because changing data-theme triggers a CSS
+    recomputation only for properties that reference the changed
+    variables — no JavaScript DOM manipulation needed."
+
+
+================================================================================
+PART 4: KEY KNOWLEDGE SUMMARY — WHAT TO MEMORIZE BEFORE THE EXPO
+================================================================================
+
+CONCEPT                 ONE-LINE EXPLANATION
+─────────────────────   ──────────────────────────────────────────────────
+Token                   Subword unit; smallest piece of text an LLM processes
+BPE                     Algorithm that builds vocabulary by merging frequent byte pairs
+Context Window          Maximum tokens a model can process in one request
+Temperature             Controls randomness: 0=deterministic, 1=creative
+Top-P                   Nucleus sampling: only consider tokens in top P% probability
+Attention               Mechanism computing relevance between all token pairs
+Self-Attention          Attention applied within the same sequence (not cross-sequence)
+Multi-Head Attention    Running multiple attention computations in parallel
+Autoregressive          Generating tokens one at a time, left to right
+System Prompt           Hidden instruction that persists across conversation turns
+Few-Shot                Providing examples in the prompt for in-context learning
+Chain of Thought        Asking the model to show reasoning steps before answering
+ReAct                   Combining reasoning with external tool use (Reason + Act)
+Role Prompting          Setting a persona to activate relevant knowledge clusters
+Guardrails              Constraints that prevent unwanted model behavior
+Fine-Tuning             Training a model on custom data (vs prompt engineering)
+RAG                     Retrieving relevant documents to augment the prompt
+Embedding               Vector representation of text for similarity search
+Hallucination           Model generating confident but factually wrong content
+Prompt Injection        Adversarial input that overrides the system prompt
+
+
+NUMBERS TO KNOW:
+
+  GPT-4 Turbo context:      128,000 tokens
+  GPT-4 vocabulary size:    ~100,256 tokens (cl100k_base)
+  GPT-4 Turbo input cost:   $10 / million tokens
+  GPT-4 Turbo output cost:  $30 / million tokens
+  GPT-3.5 input cost:       $0.50 / million tokens
+  Claude 3 Sonnet input:    $3 / million tokens
+  Gemini Pro input:         $0.50 / million tokens
+  Transformer layers GPT-4: ~120 layers (estimated)
+  Attention heads GPT-4:    ~96 heads (estimated)
+
+
+================================================================================
+END OF EXPERT EVALUATION GUIDE
+================================================================================
+
+USE THIS DOCUMENT TO:
+  1. Study the technical depth expected by evaluators
+  2. Practice explaining each section with confidence
+  3. Prepare for deep technical questions
+  4. Memorize the key numbers and terminology
+  5. Understand WHY each feature exists, not just WHAT it does

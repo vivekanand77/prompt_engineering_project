@@ -18,6 +18,13 @@
     white-space: nowrap;
 }
 
+.btn:focus-visible,
+.input:focus-visible,
+.textarea:focus-visible {
+    outline: 2px solid var(--text-primary);
+    outline-offset: 2px;
+}
+
 .btn:hover {
     background: var(--bg-dark);
     color: var(--text-inverse);
@@ -89,7 +96,7 @@
     width: 100%;
     padding: var(--sp-1) 0;
     border: none;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 2px solid var(--border);
     font-family: var(--font-body);
     font-size: 14px;
     color: var(--text-primary);
@@ -104,13 +111,14 @@
 }
 
 .input::placeholder {
-    color: var(--text-muted);
+    color: var(--text-secondary);
+    opacity: 0.7;
 }
 
 .textarea {
     width: 100%;
     padding: var(--sp-2);
-    border: 1px solid var(--border);
+    border: 2px solid var(--border);
     font-family: var(--font-mono);
     font-size: 13px;
     line-height: 1.6;
@@ -127,7 +135,37 @@
 }
 
 .textarea::placeholder {
-    color: var(--text-muted);
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+/* ─── Select ─── */
+select.input {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    padding: var(--sp-1) var(--sp-3) var(--sp-1) 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236F6F6F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0 center;
+    background-size: 12px;
+    background-color: var(--bg-primary);
+}
+
+select.input option {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    padding: var(--sp-1);
+}
+
+[data-theme="dark"] select.input {
+    background-color: var(--bg-secondary);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A0A0A0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+[data-theme="dark"] select.input option {
+    background-color: #1a1a1a;
+    color: #F5F5F5;
 }
 
 /* ─── Tags / Pills ─── */

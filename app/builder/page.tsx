@@ -6,7 +6,10 @@ import GlassCard from "@/components/ui/GlassCard";
 import CopyButton from "@/components/ui/CopyButton";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { buildPrompt, scorePrompt, getScoreLabel, PromptFields } from "@/lib/promptHelpers";
-import { useSavedPrompts } from "@/lib/useLocalStorage";
+import { useSyncedPrompts as useSavedPrompts } from "@/lib/useSyncedPrompts";
+import { useRouter } from "next/navigation";
+import ScoreMeter from "@/components/ui/ScoreMeter";
+
 
 const defaultFields: PromptFields = { goal: "", context: "", inputData: "", outputFormat: "", constraints: "", tone: "", modelType: "" };
 const tones = ["Professional", "Casual", "Technical", "Creative", "Concise", "Detailed", "Academic"];
@@ -19,13 +22,14 @@ export default function BuilderPage() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [savedMsg, setSavedMsg] = useState(false);
     const { savePrompt } = useSavedPrompts();
+    const router = useRouter();
     const score = generatedPrompt ? scorePrompt(generatedPrompt) : 0;
     const scoreInfo = getScoreLabel(score);
 
     const handleGenerate = async () => { setIsGenerating(true); await new Promise(r => setTimeout(r, 600)); setGeneratedPrompt(buildPrompt(fields)); setIsGenerating(false); };
     const handleReset = () => { setFields(defaultFields); setGeneratedPrompt(""); };
     const handleSave = () => { if (!generatedPrompt) return; savePrompt(generatedPrompt, fields.goal || "Untitled", [fields.modelType, fields.tone].filter(Boolean)); setSavedMsg(true); setTimeout(() => setSavedMsg(false), 2500); };
-    const handleSendToPlayground = () => { if (typeof window !== "undefined") { sessionStorage.setItem("peh_lab_prompt", generatedPrompt); window.location.href = "/lab"; } };
+    const handleSendToPlayground = () => { if (typeof window !== "undefined") { sessionStorage.setItem("peh_lab_prompt", generatedPrompt); router.push("/lab"); } };
     const updateField = (key: keyof PromptFields, value: string) => setFields(prev => ({ ...prev, [key]: value }));
 
     const fieldDefs = [
@@ -109,10 +113,12 @@ export default function BuilderPage() {
                                 <span className="t-micro">Structure Score</span>
                                 <span className="t-micro-dark">{score}/100</span>
                             </div>
-                            <div className="progress-track">
+                            <div className="progress-track" style={{ marginBottom: "var(--sp-2)" }}>
                                 <motion.div className="progress-fill" initial={{ width: 0 }} animate={{ width: `${score}%` }} />
                             </div>
+                            <ScoreMeter prompt={generatedPrompt} debounceMs={500} />
                         </motion.div>
+
                     )}
 
                     <div className="code-block" style={{ minHeight: 280, overflow: "auto" }}>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Sun, Moon } from "lucide-react";
 import { useTheme } from "@/lib/useTheme";
+import UserMenu from "@/components/ui/UserMenu";
 
 const navLinks = [
     { href: "/learn", label: "Learn" },
@@ -53,6 +54,7 @@ export default function Navbar() {
                     >
                         {theme === "light" ? <Moon size={14} /> : <Sun size={14} />}
                     </button>
+                    <UserMenu />
                     <Link href="/learn" className="btn btn-sm btn-cta-desktop">
                         Start Learning →
                     </Link>

@@ -3,13 +3,16 @@ import { useState, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Trash2, Edit2, Clock, ExternalLink, Plus, Save, X, Download, Upload } from "lucide-react";
 import CopyButton from "@/components/ui/CopyButton";
-import { useSavedPrompts, SavedPrompt } from "@/lib/useLocalStorage";
+import { useSyncedPrompts as useSavedPrompts } from "@/lib/useSyncedPrompts";
+import { SavedPrompt } from "@/lib/useLocalStorage";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const ALL_TAGS = ["coding", "marketing", "research", "analysis", "creative", "technical"];
 
 export default function DashboardPage() {
     const { prompts, deletePrompt, updatePrompt, savePrompt, exportPrompts, importPrompts } = useSavedPrompts();
+    const router = useRouter();
     const [search, setSearch] = useState("");
     const [filterTag, setFilterTag] = useState<string | null>(null);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -24,7 +27,7 @@ export default function DashboardPage() {
 
     const startEdit = (p: SavedPrompt) => { setEditingId(p.id); setEditContent(p.content); setEditTitle(p.title); };
     const saveEdit = (id: string) => { updatePrompt(id, editContent, editTitle); setEditingId(null); };
-    const sendToPlayground = (content: string) => { if (typeof window !== "undefined") { sessionStorage.setItem("peh_lab_prompt", content); window.location.href = "/lab"; } };
+    const sendToPlayground = (content: string) => { if (typeof window !== "undefined") { sessionStorage.setItem("peh_lab_prompt", content); router.push("/lab"); } };
     const handleAddPrompt = () => { if (!newTitle.trim() || !newContent.trim()) return; savePrompt(newContent, newTitle, newTags); setShowAdd(false); setNewTitle(""); setNewContent(""); setNewTags([]); };
 
     const handleExport = () => {
@@ -45,11 +48,16 @@ export default function DashboardPage() {
         reader.onload = (ev) => {
             try {
                 const data = JSON.parse(ev.target?.result as string);
-                if (Array.isArray(data)) {
+                const isValid = (p: unknown): p is SavedPrompt =>
+                    typeof p === "object" && p !== null
+                    && typeof (p as Record<string, unknown>).id === "string"
+                    && typeof (p as Record<string, unknown>).content === "string"
+                    && typeof (p as Record<string, unknown>).title === "string";
+                if (Array.isArray(data) && data.every(isValid)) {
                     importPrompts(data);
                     setImportMsg(`Imported ${data.length} prompts`);
                 } else {
-                    setImportMsg("Invalid format — expected JSON array");
+                    setImportMsg("Invalid format — expected JSON array of prompts");
                 }
             } catch {
                 setImportMsg("Failed to parse JSON file");

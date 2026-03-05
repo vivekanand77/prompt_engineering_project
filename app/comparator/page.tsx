@@ -1,9 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Play, Loader2 } from "lucide-react";
 import CopyButton from "@/components/ui/CopyButton";
-import { mockAIResponse } from "@/lib/promptHelpers";
+import { DEFAULT_PROMPTS, mockAIResponse } from "@/lib/promptHelpers";
+import ScoreMeter from "@/components/ui/ScoreMeter";
+
 
 const MODELS = [
     { name: "GPT-4", icon: "●" },
@@ -15,6 +17,17 @@ interface ModelResult { output: string; time: number; tokens: number; status: "i
 
 export default function ComparatorPage() {
     const [prompt, setPrompt] = useState("");
+    const [apiStatus, setApiStatus] = useState<Record<string, boolean>>({});
+
+    useEffect(() => {
+        const randomPrompt = DEFAULT_PROMPTS[Math.floor(Math.random() * DEFAULT_PROMPTS.length)];
+        setPrompt(randomPrompt);
+
+        fetch("/api/status")
+            .then(r => r.json())
+            .then(data => setApiStatus(data.providers || {}))
+            .catch(() => { });
+    }, []);
     const [results, setResults] = useState<Record<string, ModelResult>>(() => {
         const out: Record<string, ModelResult> = {};
         MODELS.forEach(m => { out[m.name] = { output: "", time: 0, tokens: 0, status: "idle" }; });
@@ -53,9 +66,29 @@ export default function ComparatorPage() {
                 </p>
             </motion.div>
 
+            {/* Model status badges */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--sp-2)", marginBottom: "var(--sp-4)" }}>
+                {MODELS.map(m => {
+                    const isLive = (m.name.includes("GPT") && apiStatus.openai) ||
+                        (m.name.includes("Gemini") && apiStatus.google) ||
+                        (m.name.includes("Claude") && apiStatus.anthropic);
+                    return (
+                        <div key={m.name} style={{ display: "flex", alignItems: "center", gap: "var(--sp-1)", border: "1px solid var(--border)", padding: "4px 10px" }}>
+                            <span style={{ fontSize: 9, color: isLive ? "var(--success)" : "var(--text-muted)" }}>●</span>
+                            <span className="t-mono-sm" style={{ fontSize: 10 }}>{m.name}:</span>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: isLive ? "var(--success)" : "var(--text-secondary)", textTransform: "uppercase" }}>
+                                {isLive ? "Live" : "Mock"}
+                            </span>
+                        </div>
+                    );
+                })}
+            </div>
+
             <div style={{ marginBottom: "var(--sp-4)" }}>
                 <span className="t-micro" style={{ display: "block", marginBottom: "var(--sp-1)" }}>Your Prompt</span>
                 <textarea className="textarea" rows={4} placeholder="Enter your prompt to compare across models..." value={prompt} onChange={e => setPrompt(e.target.value)} />
+                <ScoreMeter prompt={prompt} />
+
                 <div style={{ display: "flex", gap: "var(--sp-2)", marginTop: "var(--sp-2)" }}>
                     <button className="btn btn-solid" onClick={handleCompare} disabled={!prompt.trim() || isRunning}>
                         <Play size={14} /> {isRunning ? "Comparing..." : "Compare All Models"}

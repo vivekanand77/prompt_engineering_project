@@ -4,9 +4,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Play, RotateCcw, History, Save } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
 import CopyButton from "@/components/ui/CopyButton";
+import ScoreMeter from "@/components/ui/ScoreMeter";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
-import { countTokens } from "@/lib/promptHelpers";
-import { useSavedPrompts } from "@/lib/useLocalStorage";
+import { countTokens, DEFAULT_PROMPTS } from "@/lib/promptHelpers";
+import { useSyncedPrompts as useSavedPrompts } from "@/lib/useSyncedPrompts";
 
 const MODELS = ["GPT-4", "Claude 3", "Gemini Pro", "Local LLM"];
 
@@ -24,10 +25,25 @@ export default function LabPage() {
     const [runTime, setRunTime] = useState<number | null>(null);
     const [savedMsg, setSavedMsg] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [apiStatus, setApiStatus] = useState<Record<string, boolean>>({});
     const { savePrompt } = useSavedPrompts();
     const startRef = useRef<number>(0);
 
-    useEffect(() => { const s = sessionStorage.getItem("peh_lab_prompt"); if (s) { setPrompt(s); sessionStorage.removeItem("peh_lab_prompt"); } }, []);
+    useEffect(() => {
+        const s = sessionStorage.getItem("peh_lab_prompt");
+        if (s) {
+            setPrompt(s);
+            sessionStorage.removeItem("peh_lab_prompt");
+        } else {
+            const randomPrompt = DEFAULT_PROMPTS[Math.floor(Math.random() * DEFAULT_PROMPTS.length)];
+            setPrompt(randomPrompt);
+        }
+
+        fetch("/api/status")
+            .then(r => r.json())
+            .then(data => setApiStatus(data.providers || {}))
+            .catch(() => { });
+    }, []);
 
     const handleRun = useCallback(async () => {
         if (!prompt.trim() || isRunning) return;
@@ -62,6 +78,25 @@ export default function LabPage() {
                 <p className="t-body-sm" style={{ marginBottom: "var(--sp-3)" }}>Ctrl+Enter to run</p>
             </motion.div>
 
+            {/* Mode badge */}
+            <div style={{ marginBottom: "var(--sp-2)", display: "flex", alignItems: "center", gap: "var(--sp-1)" }}>
+                {(() => {
+                    const isLive = (model.includes("GPT") && apiStatus.openai) ||
+                        (model.includes("Gemini") && apiStatus.google) ||
+                        (model.includes("Claude") && apiStatus.anthropic);
+
+                    return isLive ? (
+                        <div style={{ padding: "4px 8px", background: "var(--success)", color: "white", fontSize: 10, fontWeight: 700, textTransform: "uppercase" }}>
+                            Live Mode enabled
+                        </div>
+                    ) : (
+                        <div style={{ padding: "4px 8px", border: "1px solid var(--border)", color: "var(--text-secondary)", fontSize: 10, fontWeight: 700, textTransform: "uppercase" }}>
+                            Simulator Mode (Mock)
+                        </div>
+                    );
+                })()}
+            </div>
+
             {/* Controls */}
             <div className="resp-stack resp-scroll-x" style={{ display: "flex", alignItems: "center", gap: "var(--sp-3)", padding: "var(--sp-2) 0", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", marginBottom: "var(--sp-3)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-1)" }}>
@@ -72,7 +107,7 @@ export default function LabPage() {
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-1)" }}>
                     <span className="t-micro">Temp: <span className="t-mono-sm">{temperature}</span></span>
-                    <input type="range" min={0} max={1} step={0.1} value={temperature} onChange={e => setTemperature(parseFloat(e.target.value))} style={{ width: 100, accentColor: "#0A0A0A" }} />
+                    <input type="range" min={0} max={1} step={0.1} value={temperature} onChange={e => setTemperature(parseFloat(e.target.value))} style={{ width: 100, accentColor: "var(--text-primary)" }} />
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-1)" }}>
                     <span className="t-micro">Max</span>
@@ -94,6 +129,8 @@ export default function LabPage() {
                         </div>
                     </div>
                     <textarea className="textarea" rows={16} placeholder={"Enter your prompt here...\n\n## GOAL\nSummarize this article\n\n## CONSTRAINTS\nMax 3 bullet points"} value={prompt} onChange={e => setPrompt(e.target.value)} />
+                    <ScoreMeter prompt={prompt} />
+
                     <div style={{ display: "flex", gap: "var(--sp-2)", marginTop: "var(--sp-2)" }}>
                         <button className="btn btn-solid" style={{ flex: 1 }} onClick={handleRun} disabled={!prompt.trim() || isRunning}>
                             <Play size={13} /> {isRunning ? "Running..." : "Run Prompt"}

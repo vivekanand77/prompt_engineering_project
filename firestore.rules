@@ -1,0 +1,27 @@
+// ─── Firestore Security Rules ────────────────────────────────
+// Deploy these in Firebase Console → Firestore → Rules
+//
+// These rules enforce:
+// 1. Users can only read/write their own data
+// 2. All other paths are denied
+// 3. Document size limits enforced
+// ──────────────────────────────────────────────────────────────
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // User-scoped data: prompts + progress
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == userId
+                         && request.resource.data.keys().size() < 50
+                         && request.resource.data.toJSON().size() < 1000000;
+    }
+
+    // Deny everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

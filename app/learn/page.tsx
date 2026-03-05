@@ -16,7 +16,7 @@ import {
     gradeFixPrompt,
     gradeTokenChallenge,
 } from "@/lib/exercises";
-import { useProgress } from "@/lib/useProgress";
+import { useSyncedProgress as useProgress } from "@/lib/useSyncedProgress";
 import Link from "next/link";
 
 /* ─── Exercise ─── */
@@ -41,7 +41,7 @@ function ExercisePanel({
 
     const handleSubmit = () => {
         let r;
-        if (ex.type === "quiz") r = { score: gradeQuiz(ex, answer).score, feedback: gradeQuiz(ex, answer).feedback };
+        if (ex.type === "quiz") { const g = gradeQuiz(ex, answer); r = { score: g.score, feedback: g.feedback }; }
         else if (ex.type === "fix-prompt") r = gradeFixPrompt(ex, textAnswer);
         else if (ex.type === "token-challenge") { const g = gradeTokenChallenge(ex, answer); r = { score: g.score, feedback: g.feedback, tokenComparison: g.tokenComparison }; }
         else r = { score: 0, feedback: "" };
@@ -258,7 +258,7 @@ export default function LearnPage() {
                 <span className="t-micro" style={{ display: "block", marginBottom: "var(--sp-2)" }}>Learning Path</span>
                 <h1 className="t-hero-sm" style={{ marginBottom: "var(--sp-1)" }}>Prompt Engineering</h1>
                 <p className="t-body" style={{ marginBottom: "var(--sp-4)" }}>
-                    5 progressive modules. Theory + hands-on exercises. No prerequisites.
+                    {MODULES.length} progressive modules. Theory + hands-on exercises. No prerequisites.
                 </p>
             </motion.div>
 

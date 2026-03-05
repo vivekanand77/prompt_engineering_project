@@ -1,14 +1,11 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/ui/Navbar";
 import { ThemeProvider } from "@/lib/useTheme";
+import { AuthProvider } from "@/lib/useAuth";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
+// Using system font stack to prevent build failures in restricted environments
+const interVariable = "font-inter";
 
 export const metadata: Metadata = {
   title: "Prompt Engineering Hub — Learn · Build · Test",
@@ -22,20 +19,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
+    <html lang="en" className={interVariable} suppressHydrationWarning>
       <head>
         <link
           href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500;700&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body>
-        <ThemeProvider>
-          <Navbar />
-          <main className="page" role="main">
-            {children}
-          </main>
-        </ThemeProvider>
+      <body suppressHydrationWarning>
+        <AuthProvider>
+          <ThemeProvider>
+            <Navbar />
+            <main className="page" role="main">
+              {children}
+            </main>
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );

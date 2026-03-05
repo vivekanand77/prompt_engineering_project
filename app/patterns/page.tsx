@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ExternalLink } from "lucide-react";
 import CopyButton from "@/components/ui/CopyButton";
@@ -55,7 +55,7 @@ const CATEGORIES = ["All", "Reasoning", "Agent", "Persona", "Learning", "Format"
 export default function PatternsPage() {
     const [activeCategory, setActiveCategory] = useState("All");
     const [expanded, setExpanded] = useState<string | null>(null);
-    const filtered = patterns.filter(p => activeCategory === "All" || p.category === activeCategory);
+    const filtered = useMemo(() => patterns.filter(p => activeCategory === "All" || p.category === activeCategory), [activeCategory]);
 
     return (
         <div className="container">

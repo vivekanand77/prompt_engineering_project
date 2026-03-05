@@ -3,6 +3,9 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, ChevronLeft, ArrowRight, RotateCcw } from "lucide-react";
 import Link from "next/link";
+import { DEFAULT_PROMPTS } from "@/lib/promptHelpers";
+import ScoreMeter from "@/components/ui/ScoreMeter";
+
 
 /* ─── Token types ─── */
 interface Token { text: string; id: number; type: "word" | "subword" | "punctuation"; byteSize: number; }
@@ -69,19 +72,34 @@ const STAGES = [
 ];
 
 const SAMPLE = "You are an expert Python developer. Generate a function that sorts a list of dictionaries by a given key.";
-const GEN_COLD = ["def", " sort", "_dicts", "(", "data", ",", " key", "):", "\n ", " return", " sorted", "(", "data", ",", " key", "=", "lambda", " x", ":", " x", ".", "get", "(", "key", "))"];
-const GEN_HOT = ["def", " magic", "_sort", "(", "items", ",", " field", "):", "\n ", " # Spicy", " sort\n ", " return", " sorted", "(", "items", ",", " key", "=", "lambda", " row", ":", " row", ".", "get", "(", "field", ",", " ''", "))"];
+
+function getMockGenTokens(prompt: string, mode: "cold" | "hot"): string[] {
+    const base = prompt.length > 30 ? prompt.slice(0, 30) + "..." : prompt;
+    if (mode === "cold") {
+        return ["# Deterministic response", "\n", "Sure,", " I", " can", " help", " with", " that.", "\n\n", "Based", " on", " your", " prompt:", " '", base, "'", "\n", "Here", " is", " the", " optimized", " implementation:", "\n\n", "def", " solve", "():", "\n ", " pass"];
+    }
+    return ["# Creative", " variation", "\n", "Alright!", " Let's", " look", " at", " '", base, "'", " from", " a", " different", " angle.", "\n\n", "```python", "\n", "print", "('", "Dynamic", " result", "')", "\n", "```"];
+}
 
 export default function JourneyPage() {
     const [started, setStarted] = useState(false);
     const [stage, setStage] = useState(0);
-    const [userText, setUserText] = useState(SAMPLE);
+    const [userText, setUserText] = useState("");
+
+    useEffect(() => {
+        const randomPrompt = DEFAULT_PROMPTS[Math.floor(Math.random() * DEFAULT_PROMPTS.length)];
+        setUserText(randomPrompt);
+        setStarted(false);
+    }, []);
+
     const liveTokens = useMemo(() => tokenize(userText), [userText]);
     const [bpeWord, setBpeWord] = useState("unbelievable");
     const bpeSteps = useMemo(() => demonstrateBPE(bpeWord), [bpeWord]);
     const [bpeStep, setBpeStep] = useState(0);
     const [genIdx, setGenIdx] = useState(-1);
     const [tempMode, setTempMode] = useState<"cold" | "hot">("cold");
+
+    const genTokens = useMemo(() => getMockGenTokens(userText, tempMode), [userText, tempMode]);
 
     const next = useCallback(() => stage < STAGES.length - 1 && setStage(s => s + 1), [stage]);
     const prev = useCallback(() => stage > 0 && setStage(s => s - 1), [stage]);
@@ -94,10 +112,16 @@ export default function JourneyPage() {
 
     useEffect(() => { setBpeStep(0); }, [bpeWord]);
     useEffect(() => { if (STAGES[stage].id !== "bpe" || bpeStep >= bpeSteps.length - 1) return; const t = setTimeout(() => setBpeStep(s => s + 1), 1200); return () => clearTimeout(t); }, [stage, bpeStep, bpeSteps.length]);
-    useEffect(() => { if (STAGES[stage].id !== "generation") { setGenIdx(-1); return; } const gen = tempMode === "cold" ? GEN_COLD : GEN_HOT; if (genIdx >= gen.length - 1) return; const t = setTimeout(() => setGenIdx(i => i + 1), genIdx < 0 ? 600 : 120 + Math.random() * 180); return () => clearTimeout(t); }, [stage, genIdx, tempMode]);
-    useEffect(() => { setGenIdx(-1); }, [tempMode]);
+    useEffect(() => {
+        if (STAGES[stage].id !== "generation") { setGenIdx(-1); return; }
+        if (genIdx >= genTokens.length - 1) return;
+        const t = setTimeout(() => setGenIdx(i => i + 1), genIdx < 0 ? 600 : 120 + Math.random() * 180);
+        return () => clearTimeout(t);
+    }, [stage, genIdx, tempMode, genTokens.length]);
 
-    const genTokens = tempMode === "cold" ? GEN_COLD : GEN_HOT;
+    useEffect(() => { setGenIdx(-1); }, [tempMode, userText]);
+
+
 
     if (!started) {
         return (
@@ -138,6 +162,8 @@ export default function JourneyPage() {
                             <div>
                                 <span className="t-micro" style={{ display: "block", marginBottom: "var(--sp-1)" }}>Input</span>
                                 <textarea className="textarea" rows={6} value={userText} onChange={(e) => setUserText(e.target.value)} placeholder="Type anything..." />
+                                <ScoreMeter prompt={userText} />
+
                                 <div style={{ display: "flex", gap: "var(--sp-3)", marginTop: "var(--sp-2)" }}>
                                     <span className="t-mono-sm">{userText.length} chars</span>
                                     <span className="t-mono-sm">{userText.split(/\s+/).filter(Boolean).length} words</span>
@@ -198,6 +224,8 @@ export default function JourneyPage() {
                             <div style={{ marginBottom: "var(--sp-3)" }}>
                                 <span className="t-micro" style={{ display: "block", marginBottom: "var(--sp-1)" }}>Prompt · {liveTokens.length} tokens</span>
                                 <textarea className="textarea" rows={2} value={userText} onChange={(e) => setUserText(e.target.value)} />
+                                <ScoreMeter prompt={userText} />
+
                             </div>
                             <div className="resp-grid-4" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "var(--sp-2)" }}>
                                 {MODELS.map((m) => {
@@ -240,7 +268,7 @@ export default function JourneyPage() {
                                             {attn.map((_, j) => {
                                                 const val = Math.min(Math.abs(Math.sin((i + 1) * (j + 1) * 0.7)) * 0.7 + (i === j ? 0.3 : 0), 1);
                                                 return (
-                                                    <div key={j} style={{ width: 44, height: 40, margin: 1, display: "flex", alignItems: "center", justifyContent: "center", background: `rgba(10,10,10,${val * 0.15})`, border: "1px solid var(--border)" }}>
+                                                    <div key={j} style={{ width: 44, height: 40, margin: 1, display: "flex", alignItems: "center", justifyContent: "center", background: `rgba(var(--text-primary-rgb),${val * 0.15})`, border: "1px solid var(--border)" }}>
                                                         <span className="t-mono-sm" style={{ fontSize: 9, opacity: 0.5 }}>{val.toFixed(1)}</span>
                                                     </div>
                                                 );
