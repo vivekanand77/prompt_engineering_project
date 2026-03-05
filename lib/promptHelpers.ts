@@ -118,14 +118,19 @@ const MOCK_RESPONSES: Record<string, string[]> = {
         "I've carefully considered your prompt and here's my response:\n\nThis is a thoughtful question that touches on several important areas. Let me walk through my reasoning:\n\nFirst, it's worth establishing the baseline. The context you've provided helps me understand the specific constraints and goals at play here.\n\nSecond, considering the output format you specified, I'll structure this response to match your exact requirements while maintaining clarity and precision.\n\nThird, I want to flag a few considerations that might affect the approach...",
         "Thank you for the detailed prompt. Here's my analysis:\n\nThe challenge here involves navigating a complex solution space. I'll approach this systematically:\n\n**Core Insight**: The key tension in this problem is between specificity and generalizability.\n\n**My Recommendation**: Given your constraints, I'd suggest a phased approach that allows for iteration and refinement at each stage.",
     ],
-    "Gemini Pro": [
-        "Analyzing your prompt...\n\nHere's a structured response based on your requirements:\n\n• **Key Finding 1**: The primary objective aligns well with best practices in this domain\n• **Key Finding 2**: The constraints you've set are reasonable and achievable\n• **Key Finding 3**: The output format you specified will work well for this use case\n\nI recommend proceeding with the outlined approach, with minor adjustments for edge cases.",
-        "Based on the context provided, here's my response:\n\nThis problem can be decomposed into three main components:\n\n1. **Data gathering** — Collecting relevant inputs\n2. **Processing** — Applying the reasoning framework\n3. **Output generation** — Formatting results per your specification\n\nEach component has been optimized for your stated goal and constraints.",
-    ],
     "Local LLM": [
         "Processing prompt...\n\nResponse generated:\n\nI have analyzed your input according to the specified parameters. The output follows your requested format and adheres to the stated constraints. This response has been generated with consideration for efficiency and accuracy.",
     ],
 };
+
+// Detect the high-level intent of a prompt so mock responses can adapt.
+function detectPromptIntent(prompt: string): "code" | "creative" | "analysis" | "list" | "general" {
+    if (/\b(code|function|class|script|implement|debug|refactor|sql|python|javascript|typescript|react|bash|api|component|query)\b/i.test(prompt)) return "code";
+    if (/\b(write|story|poem|tagline|creative|draft|describe|narrat|song|essay)\b/i.test(prompt)) return "creative";
+    if (/\b(analyz|review|evaluat|assess|compar|explain|summariz|break\s*down)\b/i.test(prompt)) return "analysis";
+    if (/\b(list|give me \d|top \d|multiple|several|\d+ ways|\d+ tips)\b/i.test(prompt)) return "list";
+    return "general";
+}
 
 export async function mockAIResponse(
     prompt: string,
@@ -134,17 +139,49 @@ export async function mockAIResponse(
 ): Promise<string> {
     await new Promise((r) => setTimeout(r, delay + Math.random() * 1000));
 
-    const responses = MOCK_RESPONSES[model] || MOCK_RESPONSES["GPT-4"];
-    const response = responses[Math.floor(Math.random() * responses.length)];
-
-    // Add some prompt-aware customization
-    const wordCount = prompt.split(" ").length;
-    const suffix =
-        wordCount > 50
+    // Route to context-aware templates for Qwen and Gemini.
+    // Model names come from the MODELS constant in app/comparator/page.tsx:
+    //   "NVIDIA Qwen" → includes("Qwen")
+    //   "Gemini Pro"  → includes("Gemini")
+    // This mirrors the same model routing used in app/api/generate/route.ts.
+    if (!model.includes("Qwen") && !model.includes("Gemini")) {
+        const responses = MOCK_RESPONSES[model] || MOCK_RESPONSES["GPT-4"];
+        const base = responses[Math.floor(Math.random() * responses.length)];
+        const suffix = prompt.split(" ").length > 50
             ? "\n\n*Note: This response has been tailored to your detailed prompt specification.*"
             : "";
+        return base + suffix;
+    }
 
-    return response + suffix;
+    // ── Context-aware simulation for Qwen and Gemini ──────────────
+    const trimmed = prompt.trim();
+    const firstSentence = trimmed.split(/[.!?\n]/)[0].slice(0, 120);
+    const intent = detectPromptIntent(trimmed);
+
+    if (model.includes("Gemini")) {
+        switch (intent) {
+            case "code":
+                return `**Gemini — Code Analysis**\n\nTask: *"${firstSentence}..."*\n\n• **Scope**: Code-related task — reviewing all requirements from your prompt\n• **Context absorbed**: Applying domain-specific best practices\n• **Approach**: Structured analysis with attention to correctness and maintainability\n\n**Recommendations based on your prompt:**\n\n1. Break the implementation into small, testable units as described\n2. Address the edge cases implied by your constraints\n3. Format the output exactly as you specified\n\n*[Simulated response — set GOOGLE_AI_API_KEY for live Gemini output]*`;
+            case "creative":
+                return `**Gemini — Creative Response**\n\nBrief: *"${firstSentence}..."*\n\n• **Tone & style**: Captured from your prompt\n• **Audience**: Inferred from context\n• **Format**: Adapted to your output requirements\n\n**Output tailored to your brief:**\n\nBuilding directly on the parameters you've described, this response matches your creative goal while respecting every constraint you've outlined. The language and structure align with the tone you specified.\n\n*[Simulated response — set GOOGLE_AI_API_KEY for live Gemini output]*`;
+            case "analysis":
+                return `**Gemini — Analysis**\n\nAnalyzing: *"${firstSentence}..."*\n\n• **Finding 1**: The primary objective in your prompt is clear — responding accordingly\n• **Finding 2**: Context and constraints from your prompt have been absorbed\n• **Finding 3**: Output format requirements will be respected\n\n**Detailed breakdown:**\n\nBased on the context you provided, this targeted response addresses your specific goal rather than giving a generic answer. Each point is derived directly from the information in your prompt.\n\n*[Simulated response — set GOOGLE_AI_API_KEY for live Gemini output]*`;
+            case "list":
+                return `**Gemini — Structured List**\n\nRequest: *"${firstSentence}..."*\n\n1. **First item** — directly relevant to what you asked\n2. **Second item** — building on your stated context\n3. **Third item** — addressing a constraint from your prompt\n4. **Fourth item** — derived from your output requirements\n5. **Fifth item** — summary point aligned with your goal\n\n*[Simulated response — set GOOGLE_AI_API_KEY for live Gemini output]*`;
+            default:
+                return `**Gemini — Response**\n\nAddressing: *"${firstSentence}..."*\n\n• **Key point 1**: Directly addresses your stated objective\n• **Key point 2**: Considers the context you provided\n• **Key point 3**: Formatted per your output requirements\n\n**Answer:**\n\nBased on the specific details in your prompt, this response is shaped by your context — not a generic template. It accounts for the tone, format, and constraints you outlined.\n\n*[Simulated response — set GOOGLE_AI_API_KEY for live Gemini output]*`;
+        }
+    }
+
+    // Qwen
+    switch (intent) {
+        case "code":
+            return `**Qwen — Technical Analysis**\n\nRequest: *"${firstSentence}..."*\n\n**Step-by-step reasoning:**\n\n1. **Understand the task** — Code-related goal identified from your prompt\n2. **Note constraints** — Limitations and requirements absorbed from context\n3. **Formulate solution** — Applying systematic reasoning\n\n**Recommendation:**\n\nGiven the specifics of your prompt, the most effective approach addresses each component you outlined. The solution is optimized for the environment and constraints you described.\n\n\`\`\`\n# Outline based on your prompt\n# 1. Primary requirement: ${firstSentence.slice(0, 60)}...\n# 2. Handle edge cases from your constraints\n# 3. Validate against your output format\n\`\`\`\n\n*[Simulated response — set NVIDIA_API_KEY for live Qwen output]*`;
+        case "list":
+            return `**Qwen — Structured Response**\n\nProcessing: *"${firstSentence}..."*\n\n→ Identified goal from your prompt\n→ Noted context and constraints\n→ Building a targeted list\n\n**Output:**\n\n1. First point — directly relevant to "${firstSentence.slice(0, 40)}..."\n2. Second point — from your stated context\n3. Third point — aligned with your constraints\n4. Fourth point — matches your output format\n5. Fifth point — closing recommendation\n\n*[Simulated response — set NVIDIA_API_KEY for live Qwen output]*`;
+        default:
+            return `**Qwen — Chain-of-Thought Response**\n\nProcessing: *"${firstSentence}..."*\n\n→ Reading your prompt context\n→ Key elements identified: ${intent === "creative" ? "creative brief, tone, audience" : intent === "analysis" ? "subject, evaluation criteria, output format" : "goal, context, constraints"}\n→ Composing a response matched to your requirements\n\n**Answer:**\n\nBased on what you specified, this response directly addresses your prompt rather than giving a generic reply. It accounts for the tone, format, and constraints you outlined, providing relevant and targeted information.\n\n*[Simulated response — set NVIDIA_API_KEY for live Qwen output]*`;
+    }
 }
 
 export function countTokens(text: string): number {

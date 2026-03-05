@@ -95,20 +95,24 @@ async function callNvidia(prompt: string, temperature: number) {
             Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-            model: "qwen/qwen3.5-397b-a17b",
+            model: "qwen/qwen2.5-72b-instruct",
             messages: [{ role: "user", content: prompt }],
-            max_tokens: 4096, // Balanced for web response
+            max_tokens: 4096,
             temperature,
             top_p: 0.95,
-            stream: false, // Keeping it simple for standard Next.js route
-            chat_template_kwargs: { enable_thinking: true },
+            stream: false,
         }),
     });
 
     if (!res.ok) throw new Error(`NVIDIA error: ${res.statusText}`);
     const data = await res.json();
+
+    // Strip any residual <think>...</think> blocks that some models emit
+    const rawContent: string = data.choices[0].message.content ?? "";
+    const output = rawContent.replace(/<think>[\s\S]*?<\/think>\s*/gi, "").trim();
+
     return {
-        output: data.choices[0].message.content,
+        output,
         usage: {
             input: data.usage?.prompt_tokens || Math.ceil(prompt.length / 4),
             output: data.usage?.completion_tokens || 100,
