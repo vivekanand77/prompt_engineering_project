@@ -21,38 +21,27 @@ async function callOpenAI(prompt: string, model: string, temperature: number) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) return null;
 
-    // The user has specified to use NVIDIA's hosted version of OpenAI-style models
-    const res = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-            model: "openai/gpt-oss-20b",
+            model: model.toLowerCase().includes("gpt-4") ? "gpt-4" : "gpt-3.5-turbo",
             messages: [{ role: "user", content: prompt }],
-            temperature: Math.min(temperature, 1.0), // Nvidia docs suggest 1.0 max
-            top_p: 1.0,
-            max_tokens: 4096,
-            stream: false,
+            temperature,
         }),
     });
 
-    if (!res.ok) throw new Error(`NVIDIA OpenAI error: ${res.statusText}`);
+    if (!res.ok) throw new Error(`OpenAI error: ${res.statusText}`);
     const data = await res.json();
-
-    // Support reasoning_content if present (thinking models)
-    const choice = data.choices[0].message;
-    const output = choice.reasoning_content
-        ? `<thinking>\n${choice.reasoning_content}\n</thinking>\n\n${choice.content}`
-        : choice.content;
-
     return {
-        output,
+        output: data.choices[0].message.content,
         usage: {
-            input: data.usage?.prompt_tokens || Math.ceil(prompt.length / 4),
-            output: data.usage?.completion_tokens || 100,
-            total: data.usage?.total_tokens || 500,
+            input: data.usage.prompt_tokens,
+            output: data.usage.completion_tokens,
+            total: data.usage.total_tokens,
         },
     };
 }
@@ -61,8 +50,7 @@ async function callGemini(prompt: string, temperature: number) {
     const apiKey = process.env.GOOGLE_AI_API_KEY;
     if (!apiKey) return null;
 
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -84,39 +72,33 @@ async function callGemini(prompt: string, temperature: number) {
     };
 }
 
-async function callNvidia(prompt: string, temperature: number) {
-    const apiKey = process.env.NVIDIA_API_KEY;
+async function callClaude(prompt: string, temperature: number) {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) return null;
 
-    const res = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
         },
         body: JSON.stringify({
-            model: "qwen/qwen2.5-72b-instruct",
+            model: "claude-3-opus-20240229",
+            max_tokens: 1024,
             messages: [{ role: "user", content: prompt }],
-            max_tokens: 4096,
             temperature,
-            top_p: 0.95,
-            stream: false,
         }),
     });
 
-    if (!res.ok) throw new Error(`NVIDIA error: ${res.statusText}`);
+    if (!res.ok) throw new Error(`Claude error: ${res.statusText}`);
     const data = await res.json();
-
-    // Strip any residual <think>...</think> blocks that some models emit
-    const rawContent: string = data.choices[0].message.content ?? "";
-    const output = rawContent.replace(/<think>[\s\S]*?<\/think>\s*/gi, "").trim();
-
     return {
-        output,
+        output: data.content[0].text,
         usage: {
-            input: data.usage?.prompt_tokens || Math.ceil(prompt.length / 4),
-            output: data.usage?.completion_tokens || 100,
-            total: data.usage?.total_tokens || 500,
+            input: data.usage.input_tokens,
+            output: data.usage.output_tokens,
+            total: data.usage.input_tokens + data.usage.output_tokens,
         },
     };
 }
@@ -134,7 +116,7 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { prompt, model = "NVIDIA GPT-OSS", temperature = 0.7 } = body;
+        const { prompt, model = "GPT-4", temperature = 0.7 } = body;
 
         if (!prompt || typeof prompt !== "string" || prompt.length > 10_000) {
             return NextResponse.json({ error: "Invalid prompt" }, { status: 400 });
@@ -145,14 +127,12 @@ export async function POST(req: NextRequest) {
         let usedLive = false;
 
         try {
-            if (model.includes("Gemini")) {
-                result = await callGemini(prompt, safeTemp);
-            } else if (model.includes("Qwen") || (model.includes("NVIDIA") && !model.includes("GPT-OSS"))) {
-                result = await callNvidia(prompt, safeTemp);
-            } else if (model.includes("GPT-OSS") || model.includes("GPT")) {
+            if (model.includes("GPT")) {
                 result = await callOpenAI(prompt, model, safeTemp);
-            } else {
-                // Local LLM or unknown — fall through to mock
+            } else if (model.includes("Gemini")) {
+                result = await callGemini(prompt, safeTemp);
+            } else if (model.includes("Claude")) {
+                result = await callClaude(prompt, safeTemp);
             }
 
             if (result) usedLive = true;
