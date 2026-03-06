@@ -9,14 +9,14 @@ import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { countTokens, DEFAULT_PROMPTS } from "@/lib/promptHelpers";
 import { useSyncedPrompts as useSavedPrompts } from "@/lib/useSyncedPrompts";
 
-const MODELS = ["GPT-4", "Claude 3", "Gemini Pro", "Local LLM"];
+const MODELS = ["NVIDIA GPT-OSS", "NVIDIA Qwen", "Gemini Pro", "Local LLM"];
 
 interface HistoryEntry { prompt: string; output: string; model: string; timestamp: string; tokens: number; }
 
 export default function LabPage() {
     const [prompt, setPrompt] = useState("");
     const [output, setOutput] = useState("");
-    const [model, setModel] = useState("GPT-4");
+    const [model, setModel] = useState("NVIDIA GPT-OSS");
     const [temperature, setTemperature] = useState(0.7);
     const [maxTokens, setMaxTokens] = useState(512);
     const [isRunning, setIsRunning] = useState(false);
@@ -81,9 +81,9 @@ export default function LabPage() {
             {/* Mode badge */}
             <div style={{ marginBottom: "var(--sp-2)", display: "flex", alignItems: "center", gap: "var(--sp-1)" }}>
                 {(() => {
-                    const isLive = (model.includes("GPT") && apiStatus.openai) ||
-                        (model.includes("Gemini") && apiStatus.google) ||
-                        (model.includes("Claude") && apiStatus.anthropic);
+                    const isLive = (model.includes("GPT-OSS") && (apiStatus.openai || apiStatus.nvidia)) ||
+                        (model.includes("Qwen") && apiStatus.nvidia) ||
+                        (model.includes("Gemini") && apiStatus.google);
 
                     return isLive ? (
                         <div style={{ padding: "4px 8px", background: "var(--success)", color: "white", fontSize: 10, fontWeight: 700, textTransform: "uppercase" }}>
