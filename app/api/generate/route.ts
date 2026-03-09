@@ -142,7 +142,7 @@ async function callGemini(
 
 // NVIDIA Model IDs — updated to currently available models
 const NVIDIA_MODELS: Record<string, string> = {
-  "NVIDIA Qwen": "deepseek-ai/deepseek-v3.1",
+  "NVIDIA Qwen": "meta/llama-3.3-70b-instruct",
   "GPT-4": "openai/gpt-oss-120b",
 };
 
