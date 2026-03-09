@@ -3,14 +3,14 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Play, Loader2 } from "lucide-react";
 import CopyButton from "@/components/ui/CopyButton";
-import { DEFAULT_PROMPTS, mockAIResponse } from "@/lib/promptHelpers";
+import { DEFAULT_PROMPTS } from "@/lib/promptHelpers";
 import ScoreMeter from "@/components/ui/ScoreMeter";
 
 
 const MODELS = [
-    { name: "GPT-4", icon: "●" },
-    { name: "Claude 3", icon: "●" },
+    { name: "NVIDIA Qwen", icon: "●" },
     { name: "Gemini Pro", icon: "●" },
+    { name: "GPT-4", icon: "●" },
 ];
 
 interface ModelResult { output: string; time: number; tokens: number; status: "idle" | "loading" | "done" | "error"; }
@@ -38,22 +38,38 @@ export default function ComparatorPage() {
 
     const handleCompare = async () => {
         if (!prompt.trim() || isRunning) return;
-        const newResults = { ...results };
-        MODELS.forEach(m => { newResults[m.name] = { output: "", time: 0, tokens: 0, status: "loading" }; });
-        setResults({ ...newResults });
+        // Set all to loading immediately
+        setResults(prev => {
+            const next = { ...prev };
+            MODELS.forEach(m => { next[m.name] = { output: "", time: 0, tokens: 0, status: "loading" }; });
+            return next;
+        });
 
-        for (const m of MODELS) {
+        // Run all models in parallel
+        await Promise.all(MODELS.map(async (m) => {
             const start = Date.now();
-            const delay = 800 + Math.random() * 1200;
-            await new Promise(r => setTimeout(r, delay));
             try {
-                const mockOut = await mockAIResponse(prompt, m.name);
+                const res = await fetch("/api/generate", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ prompt, model: m.name, temperature: 0.7 }),
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
                 const elapsed = Date.now() - start;
-                setResults(prev => ({ ...prev, [m.name]: { output: mockOut, time: elapsed, tokens: Math.floor(80 + Math.random() * 120), status: "done" as const } }));
-            } catch {
-                setResults(prev => ({ ...prev, [m.name]: { output: "Error", time: 0, tokens: 0, status: "error" } }));
+                setResults(prev => ({
+                    ...prev,
+                    [m.name]: { output: data.output || "No response", time: elapsed, tokens: data.tokens?.total || 0, status: "done" as const },
+                }));
+            } catch (err) {
+                const msg = err instanceof Error ? err.message : "Failed";
+                setResults(prev => ({
+                    ...prev,
+                    [m.name]: { output: msg, time: 0, tokens: 0, status: "error" as const },
+                }));
             }
-        }
+        }));
     };
 
     return (
@@ -69,9 +85,9 @@ export default function ComparatorPage() {
             {/* Model status badges */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--sp-2)", marginBottom: "var(--sp-4)" }}>
                 {MODELS.map(m => {
-                    const isLive = (m.name.includes("GPT") && apiStatus.openai) ||
+                    const isLive = (m.name.includes("Qwen") && apiStatus.nvidia) ||
                         (m.name.includes("Gemini") && apiStatus.google) ||
-                        (m.name.includes("Claude") && apiStatus.anthropic);
+                        (m.name.includes("GPT") && apiStatus.openai);
                     return (
                         <div key={m.name} style={{ display: "flex", alignItems: "center", gap: "var(--sp-1)", border: "1px solid var(--border)", padding: "4px 10px" }}>
                             <span style={{ fontSize: 9, color: isLive ? "var(--success)" : "var(--text-muted)" }}>●</span>

@@ -1,166 +1,270 @@
 import { NextRequest, NextResponse } from "next/server";
 import { mockAIResponse } from "@/lib/promptHelpers";
+import { generateRateLimiter, getClientIP } from "@/lib/rateLimiter";
+import { isAppError, APIError, ValidationError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import { getConfig, API_CONSTANTS } from "@/lib/config";
+import {
+  validateGenerateRequest,
+  type AIProviderResponse,
+  type OpenAIProviderResponse,
+  type GeminiProviderResponse,
+  type QwenProviderResponse,
+  type GenerateResponse,
+} from "@/lib/types";
+import { fetchWithRetry, safeJSONParse } from "@/lib/apiUtils";
 
-// ─── Simple in-memory rate limiter ───────────────────────────
-const rateLimitMap = new Map<string, number[]>();
-const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX_REQUESTS = 20;
+// ─── AI Provider Helpers ─────────────────────────────────────────────────────
 
-function isRateLimited(ip: string): boolean {
-    const now = Date.now();
-    const timestamps = rateLimitMap.get(ip) ?? [];
-    const recent = timestamps.filter(t => now - t < RATE_LIMIT_WINDOW_MS);
-    recent.push(now);
-    rateLimitMap.set(ip, recent);
-    return recent.length > RATE_LIMIT_MAX_REQUESTS;
-}
+async function callOpenAI(
+  prompt: string,
+  model: string,
+  temperature: number,
+  maxTokens: number
+): Promise<AIProviderResponse | null> {
+  const config = getConfig();
+  if (!config.OPENAI_API_KEY) return null;
 
-// ─── Real Provider Helpers ───────────────────────────────────
+  const startTime = Date.now();
 
-async function callOpenAI(prompt: string, model: string, temperature: number) {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) return null;
-
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-            model: model.toLowerCase().includes("gpt-4") ? "gpt-4" : "gpt-3.5-turbo",
-            messages: [{ role: "user", content: prompt }],
-            temperature,
-        }),
+  try {
+    // OPENAI_API_KEY holds an NVIDIA-hosted key — route to NVIDIA endpoint
+    const res = await fetchWithRetry("https://integrate.api.nvidia.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "openai/gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        temperature: Math.min(temperature, API_CONSTANTS.MAX_TEMPERATURE),
+        max_tokens: maxTokens,
+        stream: false,
+      }),
     });
 
-    if (!res.ok) throw new Error(`OpenAI error: ${res.statusText}`);
-    const data = await res.json();
+    if (!res.ok) {
+      throw new APIError(`OpenAI/NVIDIA error: ${res.statusText}`, "OpenAI", res.status);
+    }
+
+    const data = safeJSONParse<OpenAIProviderResponse>(await res.text(), {} as OpenAIProviderResponse);
+
+    if (!data.choices?.[0]?.message?.content) {
+      throw new APIError("Invalid response from OpenAI API", "OpenAI");
+    }
+
+    const durationMs = Date.now() - startTime;
+    logger.logExternalAPI("OpenAI", true, durationMs, { model });
+
     return {
-        output: data.choices[0].message.content,
-        usage: {
-            input: data.usage.prompt_tokens,
-            output: data.usage.completion_tokens,
-            total: data.usage.total_tokens,
-        },
+      output: data.choices[0].message.content,
+      usage: {
+        input: data.usage?.prompt_tokens || Math.ceil(prompt.length / API_CONSTANTS.CHARS_PER_TOKEN),
+        output: data.usage?.completion_tokens || Math.ceil(data.choices[0].message.content.length / API_CONSTANTS.CHARS_PER_TOKEN),
+        total: data.usage?.total_tokens || Math.ceil((prompt.length + data.choices[0].message.content.length) / API_CONSTANTS.CHARS_PER_TOKEN),
+      },
     };
+  } catch (error) {
+    const durationMs = Date.now() - startTime;
+    logger.logExternalAPI("OpenAI", false, durationMs, { error: error instanceof Error ? error.message : String(error) });
+    throw error;
+  }
 }
 
-async function callGemini(prompt: string, temperature: number) {
-    const apiKey = process.env.GOOGLE_AI_API_KEY;
-    if (!apiKey) return null;
+async function callGemini(
+  prompt: string,
+  temperature: number,
+  maxTokens: number
+): Promise<AIProviderResponse | null> {
+  const config = getConfig();
+  if (!config.GOOGLE_AI_API_KEY) return null;
 
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
+  const startTime = Date.now();
+
+  try {
+    const res = await fetchWithRetry(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${config.GOOGLE_AI_API_KEY}`,
+      {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature, maxOutputTokens: 1024 },
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature, maxOutputTokens: maxTokens },
         }),
-    });
+      }
+    );
 
-    if (!res.ok) throw new Error(`Gemini error: ${res.statusText}`);
-    const data = await res.json();
-    const output = data.candidates[0].content.parts[0].text;
-    return {
-        output,
-        usage: {
-            input: Math.ceil(prompt.length / 4),
-            output: Math.ceil(output.length / 4),
-            total: Math.ceil((prompt.length + output.length) / 4),
-        },
-    };
-}
-
-async function callClaude(prompt: string, temperature: number) {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) return null;
-
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "x-api-key": apiKey,
-            "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-            model: "claude-3-opus-20240229",
-            max_tokens: 1024,
-            messages: [{ role: "user", content: prompt }],
-            temperature,
-        }),
-    });
-
-    if (!res.ok) throw new Error(`Claude error: ${res.statusText}`);
-    const data = await res.json();
-    return {
-        output: data.content[0].text,
-        usage: {
-            input: data.usage.input_tokens,
-            output: data.usage.output_tokens,
-            total: data.usage.input_tokens + data.usage.output_tokens,
-        },
-    };
-}
-
-// ─── Main Route ──────────────────────────────────────────────
-
-export async function POST(req: NextRequest) {
-    try {
-        const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-            || req.headers.get("x-real-ip")
-            || "unknown";
-
-        if (isRateLimited(ip)) {
-            return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-        }
-
-        const body = await req.json();
-        const { prompt, model = "GPT-4", temperature = 0.7 } = body;
-
-        if (!prompt || typeof prompt !== "string" || prompt.length > 10_000) {
-            return NextResponse.json({ error: "Invalid prompt" }, { status: 400 });
-        }
-
-        const safeTemp = Math.min(Math.max(Number(temperature) || 0.7, 0), 1);
-        let result = null;
-        let usedLive = false;
-
-        try {
-            if (model.includes("GPT")) {
-                result = await callOpenAI(prompt, model, safeTemp);
-            } else if (model.includes("Gemini")) {
-                result = await callGemini(prompt, safeTemp);
-            } else if (model.includes("Claude")) {
-                result = await callClaude(prompt, safeTemp);
-            }
-
-            if (result) usedLive = true;
-        } catch (err) {
-            console.error("Live API failed, falling back to simulation:", err);
-            // Result remains null, will fallback to mock below
-        }
-
-        if (!result) {
-            const mockOut = await mockAIResponse(prompt, model, 800);
-            result = {
-                output: mockOut,
-                usage: {
-                    input: Math.ceil(prompt.length / 4),
-                    output: Math.ceil(mockOut.length / 4),
-                    total: Math.ceil((prompt.length + mockOut.length) / 4),
-                },
-            };
-        }
-
-        return NextResponse.json({
-            output: result.output,
-            model,
-            live: usedLive,
-            tokens: result.usage,
-            timestamp: new Date().toISOString(),
-        });
-    } catch {
-        return NextResponse.json({ error: "Server error" }, { status: 500 });
+    if (!res.ok) {
+      throw new APIError(`Gemini error: ${res.statusText}`, "Gemini", res.status);
     }
+
+    const data = safeJSONParse<GeminiProviderResponse>(await res.text(), {} as GeminiProviderResponse);
+
+    if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+      throw new APIError("Invalid response from Gemini API", "Gemini");
+    }
+
+    const output = data.candidates[0].content.parts[0].text;
+    const durationMs = Date.now() - startTime;
+    logger.logExternalAPI("Gemini", true, durationMs);
+
+    return {
+      output,
+      usage: {
+        input: Math.ceil(prompt.length / API_CONSTANTS.CHARS_PER_TOKEN),
+        output: Math.ceil(output.length / API_CONSTANTS.CHARS_PER_TOKEN),
+        total: Math.ceil((prompt.length + output.length) / API_CONSTANTS.CHARS_PER_TOKEN),
+      },
+    };
+  } catch (error) {
+    const durationMs = Date.now() - startTime;
+    logger.logExternalAPI("Gemini", false, durationMs, { error: error instanceof Error ? error.message : String(error) });
+    throw error;
+  }
+}
+
+async function callQwen(
+  prompt: string,
+  temperature: number,
+  maxTokens: number
+): Promise<AIProviderResponse | null> {
+  const config = getConfig();
+  if (!config.NVIDIA_API_KEY) return null;
+
+  const startTime = Date.now();
+
+  try {
+    const res = await fetchWithRetry("https://integrate.api.nvidia.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.NVIDIA_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "qwen/qwen3-235b-a22b",
+        messages: [{ role: "user", content: prompt }],
+        temperature: Math.min(temperature, API_CONSTANTS.MAX_TEMPERATURE),
+        top_p: 0.95,
+        max_tokens: maxTokens,
+        stream: false,
+      }),
+    });
+
+    if (!res.ok) {
+      throw new APIError(`Qwen error: ${res.statusText}`, "Qwen", res.status);
+    }
+
+    const data = safeJSONParse<QwenProviderResponse>(await res.text(), {} as QwenProviderResponse);
+
+    if (!data.choices?.[0]?.message?.content) {
+      throw new APIError("Invalid response from Qwen API", "Qwen");
+    }
+
+    const output = data.choices[0].message.content;
+    const durationMs = Date.now() - startTime;
+    logger.logExternalAPI("Qwen", true, durationMs);
+
+    return {
+      output,
+      usage: {
+        input: data.usage?.prompt_tokens || Math.ceil(prompt.length / API_CONSTANTS.CHARS_PER_TOKEN),
+        output: data.usage?.completion_tokens || Math.ceil(output.length / API_CONSTANTS.CHARS_PER_TOKEN),
+        total: data.usage?.total_tokens || Math.ceil((prompt.length + output.length) / API_CONSTANTS.CHARS_PER_TOKEN),
+      },
+    };
+  } catch (error) {
+    const durationMs = Date.now() - startTime;
+    logger.logExternalAPI("Qwen", false, durationMs, { error: error instanceof Error ? error.message : String(error) });
+    throw error;
+  }
+}
+
+// ─── Main Route ──────────────────────────────────────────────────────────────
+
+export async function POST(req: NextRequest): Promise<NextResponse<GenerateResponse | { error: string }>> {
+  const startTime = Date.now();
+  const ip = getClientIP(req.headers);
+
+  try {
+    logger.logRequest("POST", "/api/generate", ip);
+
+    // Rate limiting
+    generateRateLimiter.check(ip);
+
+    // Parse and validate request
+    const body = await req.json();
+    const validation = validateGenerateRequest(body);
+
+    if (!validation.success) {
+      throw new ValidationError(validation.error || "Invalid request");
+    }
+
+    const { prompt, model = "NVIDIA Qwen", temperature = API_CONSTANTS.DEFAULT_TEMPERATURE, maxTokens = API_CONSTANTS.DEFAULT_TOKENS_OUTPUT } = validation.data!;
+
+    // Validate prompt length
+    if (prompt.length > API_CONSTANTS.MAX_PROMPT_LENGTH) {
+      throw new ValidationError(`Prompt too long. Maximum ${API_CONSTANTS.MAX_PROMPT_LENGTH} characters.`);
+    }
+
+    // Clamp values
+    const safeTemp = Math.min(Math.max(temperature, API_CONSTANTS.MIN_TEMPERATURE), API_CONSTANTS.MAX_TEMPERATURE);
+    const safeMaxTokens = Math.min(Math.max(maxTokens || API_CONSTANTS.DEFAULT_TOKENS_OUTPUT, API_CONSTANTS.MIN_TOKENS_OUTPUT), API_CONSTANTS.MAX_TOKENS_OUTPUT);
+
+    let result: AIProviderResponse | null = null;
+    let usedLive = false;
+
+    // Try live API based on model
+    try {
+      if (model.includes("Gemini")) {
+        result = await callGemini(prompt, safeTemp, safeMaxTokens);
+      } else if (model.includes("Qwen") || model.includes("NVIDIA")) {
+        result = await callQwen(prompt, safeTemp, safeMaxTokens);
+      } else if (model.includes("GPT")) {
+        result = await callOpenAI(prompt, model, safeTemp, safeMaxTokens);
+      }
+
+      if (result) usedLive = true;
+    } catch (err) {
+      logger.warn("Live API call failed, falling back to simulation", { error: err instanceof Error ? err.message : String(err) });
+      // Result remains null, will fallback to mock below
+    }
+
+    // Fallback to mock response
+    if (!result) {
+      const mockOut = await mockAIResponse(prompt, model, 800);
+      result = {
+        output: mockOut,
+        usage: {
+          input: Math.ceil(prompt.length / API_CONSTANTS.CHARS_PER_TOKEN),
+          output: Math.ceil(mockOut.length / API_CONSTANTS.CHARS_PER_TOKEN),
+          total: Math.ceil((prompt.length + mockOut.length) / API_CONSTANTS.CHARS_PER_TOKEN),
+        },
+      };
+    }
+
+    const durationMs = Date.now() - startTime;
+    logger.logResponse("POST", "/api/generate", 200, durationMs, { model, usedLive });
+
+    const response: GenerateResponse = {
+      output: result.output,
+      model,
+      live: usedLive,
+      tokens: result.usage,
+      timestamp: new Date().toISOString(),
+    };
+
+    return NextResponse.json(response);
+  } catch (error) {
+    const durationMs = Date.now() - startTime;
+
+    if (isAppError(error)) {
+      logger.logResponse("POST", "/api/generate", error.statusCode, durationMs, { error: error.message });
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
+
+    logger.error("Unexpected error in /api/generate", error);
+    logger.logResponse("POST", "/api/generate", 500, durationMs);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }
