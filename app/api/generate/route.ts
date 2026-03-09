@@ -143,7 +143,8 @@ async function callGemini(
 // NVIDIA Model IDs — updated to currently available models
 const NVIDIA_MODELS: Record<string, string> = {
   "NVIDIA Qwen": "meta/llama-3.3-70b-instruct",
-  "GPT-4": "openai/gpt-oss-120b",
+  "GPT-4": "meta/llama-3.1-405b-instruct",
+  "Gemini Pro": "google/gemma-3-27b-it",
 };
 
 // ─── Main Route ──────────────────────────────────────────────────────────────
@@ -199,14 +200,13 @@ export async function POST(req: NextRequest): Promise<NextResponse<GenerateRespo
 
     // Try live API based on model
     try {
-      if (model.includes("Gemini")) {
+      // Route all models through NVIDIA API (Google free tier quota exhausted)
+      const nvidiaModel = NVIDIA_MODELS[model];
+      if (nvidiaModel) {
+        result = await callNVIDIA(prompt, nvidiaModel, model, safeTemp, safeMaxTokens);
+      } else if (model.includes("Gemini")) {
+        // Fallback to direct Gemini API if not in NVIDIA map
         result = await callGemini(prompt, safeTemp, safeMaxTokens);
-      } else {
-        // Route to NVIDIA for both GPT-4 and NVIDIA Qwen
-        const nvidiaModel = NVIDIA_MODELS[model];
-        if (nvidiaModel) {
-          result = await callNVIDIA(prompt, nvidiaModel, model, safeTemp, safeMaxTokens);
-        }
       }
 
       if (result) usedLive = true;
