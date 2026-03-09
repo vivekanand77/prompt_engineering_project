@@ -72,8 +72,8 @@ export default function HomePage() {
         >
           {[
             { num: "10", label: "Learning Modules" },
-            { num: "20+", label: "Prompt Patterns" },
-            { num: "4", label: "AI Models" },
+            { num: "6", label: "Prompt Patterns" },
+            { num: "3", label: "AI Models" },
             { num: "∞", label: "Prompts to Build" },
           ].map((s, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + i * 0.1 }}>

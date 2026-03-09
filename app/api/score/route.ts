@@ -26,10 +26,13 @@ async function getAIScore(prompt: string): Promise<AIScoreResult | null> {
   try {
     if (config.GOOGLE_AI_API_KEY) {
       const res = await fetchWithRetry(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${config.GOOGLE_AI_API_KEY}`,
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent",
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": config.GOOGLE_AI_API_KEY,
+          },
           body: JSON.stringify({
             contents: [
               {
@@ -69,7 +72,7 @@ async function getAIScore(prompt: string): Promise<AIScoreResult | null> {
             Authorization: `Bearer ${config.OPENAI_API_KEY}`,
           },
           body: JSON.stringify({
-            model: "openai/gpt-4o",
+            model: "meta/llama-3.3-70b-instruct",
             messages: [
               { role: "system", content: systemPrompt },
               { role: "user", content: prompt },

@@ -1,8 +1,7 @@
 "use client";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Send, RotateCcw, Save, ChevronDown } from "lucide-react";
-import GlassCard from "@/components/ui/GlassCard";
+import { Send, RotateCcw, Save } from "lucide-react";
 import CopyButton from "@/components/ui/CopyButton";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { buildPrompt, scorePrompt, getScoreLabel, PromptFields } from "@/lib/promptHelpers";
@@ -13,7 +12,7 @@ import ScoreMeter from "@/components/ui/ScoreMeter";
 
 const defaultFields: PromptFields = { goal: "", context: "", inputData: "", outputFormat: "", constraints: "", tone: "", modelType: "" };
 const tones = ["Professional", "Casual", "Technical", "Creative", "Concise", "Detailed", "Academic"];
-const models = ["NVIDIA GPT-OSS", "NVIDIA Qwen", "Gemini Pro", "Local LLM", "Any"];
+const models = ["NVIDIA Qwen", "Gemini Pro", "GPT-4", "Any"];
 const outputFormats = ["Markdown with headers", "JSON object", "Numbered list", "Bullet points", "Free-form prose", "Code + explanation"];
 
 export default function BuilderPage() {
@@ -27,7 +26,39 @@ export default function BuilderPage() {
     const score = generatedPrompt ? scorePrompt(generatedPrompt) : 0;
     const scoreInfo = generatedPrompt ? getScoreLabel(score) : null;
 
-    const handleGenerate = async () => { setIsGenerating(true); await new Promise(r => setTimeout(r, 600)); setGeneratedPrompt(buildPrompt(fields)); setIsGenerating(false); };
+    const handleGenerate = async () => {
+        setIsGenerating(true);
+        try {
+            // Build a meta-prompt that asks AI to craft an optimized prompt from the user's fields
+            const metaPrompt = [
+                "You are an expert prompt engineer. Based on the following specifications, generate a single, well-structured, production-ready prompt that a user can copy and paste directly into any AI model. Output ONLY the final prompt text — no explanations, no preamble, no meta-commentary.",
+                fields.goal && `GOAL: ${fields.goal}`,
+                fields.context && `CONTEXT: ${fields.context}`,
+                fields.inputData && `INPUT DATA: ${fields.inputData}`,
+                fields.outputFormat && `DESIRED OUTPUT FORMAT: ${fields.outputFormat}`,
+                fields.constraints && `CONSTRAINTS: ${fields.constraints}`,
+                fields.tone && `TONE: ${fields.tone}`,
+                fields.modelType && `TARGET MODEL: ${fields.modelType}`,
+            ].filter(Boolean).join("\n");
+
+            const res = await fetch("/api/generate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ prompt: metaPrompt, model: "GPT-4", temperature: 0.7 }),
+            });
+            const data = await res.json();
+            if (data.output) {
+                setGeneratedPrompt(data.output);
+            } else {
+                // Fallback to local template if API fails
+                setGeneratedPrompt(buildPrompt(fields));
+            }
+        } catch {
+            // Fallback to local template on network error
+            setGeneratedPrompt(buildPrompt(fields));
+        }
+        setIsGenerating(false);
+    };
     const handleReset = () => { setFields(defaultFields); setGeneratedPrompt(""); };
     const handleSave = () => { if (!generatedPrompt) return; savePrompt(generatedPrompt, fields.goal || "Untitled", [fields.modelType, fields.tone].filter(Boolean)); setSavedMsg(true); setTimeout(() => setSavedMsg(false), 2500); };
     const handleSendToPlayground = () => { if (typeof window !== "undefined") { sessionStorage.setItem("peh_lab_prompt", generatedPrompt); router.push("/lab"); } };
