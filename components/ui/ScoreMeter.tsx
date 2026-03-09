@@ -7,6 +7,7 @@ interface ScoreResult {
     score: number;
     feedback: string;
     live: boolean;
+    suggestions?: string[];
 }
 
 export default function ScoreMeter({ prompt, debounceMs = 1200 }: { prompt: string, debounceMs?: number }) {
@@ -55,7 +56,7 @@ export default function ScoreMeter({ prompt, debounceMs = 1200 }: { prompt: stri
                             <Zap size={10} style={{ color: "var(--text-muted)" }} />
                         </motion.div>
                     ) : (
-                        result?.live ? <Zap size={10} style={{ color: "var(--success)" }} /> : <Zap size={10} style={{ color: "var(--text-muted)" }} />
+                        result?.live ? <Zap size={10} style={{ color: "var(--success)" }} /> : < Zap size={10} style={{ color: "var(--text-muted)" }} />
                     )}
                     <span className="t-micro" style={{ fontSize: 9 }}>
                         {loading ? "AI Analysis..." : result?.live ? "AI Audit" : "Heuristic Audit"}
@@ -68,7 +69,7 @@ export default function ScoreMeter({ prompt, debounceMs = 1200 }: { prompt: stri
                 )}
             </div>
 
-            <div style={{ width: "100%", height: 3, background: "var(--border)", position: "relative", overflow: "hidden", marginBottom: "var(--sp-1)" }}>
+            <div style={{ width: "100%", height: 3, background: "var(--border)", position: "relative", overflow: "hidden", marginBottom: "var(--sp-2)" }}>
                 {result && !loading && (
                     <motion.div
                         initial={{ width: 0 }}
@@ -78,18 +79,29 @@ export default function ScoreMeter({ prompt, debounceMs = 1200 }: { prompt: stri
                 )}
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-1)", minHeight: 14 }}>
+            <div style={{ minHeight: 14 }}>
                 {result && !loading && (
-                    <>
-                        {result.score >= 70 ? (
-                            <CheckCircle2 size={10} style={{ color: "var(--success)" }} />
-                        ) : (
-                            <AlertCircle size={10} style={{ color: result.score >= 50 ? "#EAB308" : "var(--error)" }} />
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-1)" }}>
+                            {result.score >= 70 ? (
+                                <CheckCircle2 size={10} style={{ color: "var(--success)" }} />
+                            ) : (
+                                <AlertCircle size={10} style={{ color: result.score >= 50 ? "#EAB308" : "var(--error)" }} />
+                            )}
+                            <span className="t-body-sm" style={{ fontSize: 10, opacity: 0.9, fontWeight: 500 }}>
+                                {result.feedback}
+                            </span>
+                        </div>
+                        {result.suggestions && result.suggestions.length > 0 && !result.live && (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", paddingLeft: "14px" }}>
+                                {result.suggestions.map((s, i) => (
+                                    <span key={i} className="t-micro" style={{ fontSize: 8, padding: "2px 6px", background: "var(--border)", borderRadius: 2, opacity: 0.7 }}>
+                                        {s}
+                                    </span>
+                                ))}
+                            </div>
                         )}
-                        <span className="t-body-sm" style={{ fontSize: 10, opacity: 0.8, fontStyle: "italic" }}>
-                            {result.feedback}
-                        </span>
-                    </>
+                    </div>
                 )}
             </div>
         </div>
