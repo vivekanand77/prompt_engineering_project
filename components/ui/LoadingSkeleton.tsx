@@ -1,3 +1,5 @@
+const SKELETON_WIDTHS = [85, 72, 91, 65, 78, 88, 70, 95, 60, 83];
+
 export default function LoadingSkeleton({ lines = 4 }: { lines?: number }) {
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-2)" }}>
@@ -7,7 +9,7 @@ export default function LoadingSkeleton({ lines = 4 }: { lines?: number }) {
                     style={{
                         height: 12,
                         background: "var(--border)",
-                        width: `${60 + Math.random() * 35}%`,
+                        width: `${SKELETON_WIDTHS[i % SKELETON_WIDTHS.length]}%`,
                         animation: "pulse 1.5s ease-in-out infinite",
                     }}
                 />

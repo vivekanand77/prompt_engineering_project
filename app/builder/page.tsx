@@ -13,7 +13,7 @@ import ScoreMeter from "@/components/ui/ScoreMeter";
 
 const defaultFields: PromptFields = { goal: "", context: "", inputData: "", outputFormat: "", constraints: "", tone: "", modelType: "" };
 const tones = ["Professional", "Casual", "Technical", "Creative", "Concise", "Detailed", "Academic"];
-const models = ["GPT-4", "GPT-3.5", "Claude 3", "Gemini Pro", "Local LLM", "Any"];
+const models = ["NVIDIA GPT-OSS", "NVIDIA Qwen", "Gemini Pro", "Local LLM", "Any"];
 const outputFormats = ["Markdown with headers", "JSON object", "Numbered list", "Bullet points", "Free-form prose", "Code + explanation"];
 
 export default function BuilderPage() {
@@ -23,8 +23,9 @@ export default function BuilderPage() {
     const [savedMsg, setSavedMsg] = useState(false);
     const { savePrompt } = useSavedPrompts();
     const router = useRouter();
-    const score = generatedPrompt ? scorePrompt(generatedPrompt) : 0;
-    const scoreInfo = getScoreLabel(score);
+    const scoreResult = generatedPrompt ? scorePrompt(generatedPrompt) : null;
+    const score = scoreResult?.score ?? 0;
+    const scoreInfo = scoreResult ? getScoreLabel(score) : null;
 
     const handleGenerate = async () => { setIsGenerating(true); await new Promise(r => setTimeout(r, 600)); setGeneratedPrompt(buildPrompt(fields)); setIsGenerating(false); };
     const handleReset = () => { setFields(defaultFields); setGeneratedPrompt(""); };
@@ -111,7 +112,7 @@ export default function BuilderPage() {
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ marginBottom: "var(--sp-2)" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "var(--sp-1)" }}>
                                 <span className="t-micro">Structure Score</span>
-                                <span className="t-micro-dark">{score}/100</span>
+                                <span className="t-micro-dark" style={{ color: scoreInfo?.color }}>{scoreInfo?.label} — {score}/100</span>
                             </div>
                             <div className="progress-track" style={{ marginBottom: "var(--sp-2)" }}>
                                 <motion.div className="progress-fill" initial={{ width: 0 }} animate={{ width: `${score}%` }} />

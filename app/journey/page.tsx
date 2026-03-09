@@ -98,8 +98,21 @@ export default function JourneyPage() {
     const [bpeStep, setBpeStep] = useState(0);
     const [genIdx, setGenIdx] = useState(-1);
     const [tempMode, setTempMode] = useState<"cold" | "hot">("cold");
+    const [liveGenTokens, setLiveGenTokens] = useState<string[] | null>(null);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [apiStatus, setApiStatus] = useState<Record<string, boolean>>({});
 
-    const genTokens = useMemo(() => getMockGenTokens(userText, tempMode), [userText, tempMode]);
+    useEffect(() => {
+        fetch("/api/status")
+            .then(r => r.json())
+            .then(data => setApiStatus(data.providers || {}))
+            .catch(() => { });
+    }, []);
+
+    const genTokens = useMemo(() => {
+        if (liveGenTokens) return liveGenTokens;
+        return getMockGenTokens(userText, tempMode);
+    }, [userText, tempMode, liveGenTokens]);
 
     const next = useCallback(() => stage < STAGES.length - 1 && setStage(s => s + 1), [stage]);
     const prev = useCallback(() => stage > 0 && setStage(s => s - 1), [stage]);
@@ -113,11 +126,44 @@ export default function JourneyPage() {
     useEffect(() => { setBpeStep(0); }, [bpeWord]);
     useEffect(() => { if (STAGES[stage].id !== "bpe" || bpeStep >= bpeSteps.length - 1) return; const t = setTimeout(() => setBpeStep(s => s + 1), 1200); return () => clearTimeout(t); }, [stage, bpeStep, bpeSteps.length]);
     useEffect(() => {
-        if (STAGES[stage].id !== "generation") { setGenIdx(-1); return; }
+        if (STAGES[stage].id !== "generation") {
+            setGenIdx(-1);
+            setLiveGenTokens(null);
+            return;
+        }
+
+        const isLiveEnabled = apiStatus.openai || apiStatus.google || apiStatus.anthropic;
+
+        if (isLiveEnabled && !liveGenTokens && !isGenerating) {
+            const fetchRealGen = async () => {
+                setIsGenerating(true);
+                try {
+                    const res = await fetch("/api/generate", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            prompt: userText,
+                            model: apiStatus.openai ? "NVIDIA GPT-OSS" : apiStatus.nvidia ? "NVIDIA Qwen" : "Gemini Pro",
+                            temperature: tempMode === "cold" ? 0.1 : 0.8
+                        })
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        // Split into rough tokens for animation
+                        const tokens = data.output.split(/(\s+)/).filter(Boolean);
+                        setLiveGenTokens(tokens);
+                    }
+                } catch { /* fallback to mock */ }
+                finally { setIsGenerating(false); }
+            };
+            fetchRealGen();
+            return;
+        }
+
         if (genIdx >= genTokens.length - 1) return;
-        const t = setTimeout(() => setGenIdx(i => i + 1), genIdx < 0 ? 600 : 120 + Math.random() * 180);
+        const t = setTimeout(() => setGenIdx(i => i + 1), genIdx < 0 ? 600 : 80 + Math.random() * 100);
         return () => clearTimeout(t);
-    }, [stage, genIdx, tempMode, genTokens.length]);
+    }, [stage, genIdx, tempMode, genTokens, apiStatus, liveGenTokens, isGenerating, userText]);
 
     useEffect(() => { setGenIdx(-1); }, [tempMode, userText]);
 
@@ -148,6 +194,18 @@ export default function JourneyPage() {
                         {s.title}
                     </button>
                 ))}
+            </div>
+
+            {/* Mode Indicator */}
+            <div style={{ marginBottom: "var(--sp-2)", display: "flex", gap: "var(--sp-1)" }}>
+                {(() => {
+                    const isLive = apiStatus.openai || apiStatus.google || apiStatus.anthropic;
+                    return isLive ? (
+                        <span className="t-mono-sm" style={{ padding: "4px 8px", background: "var(--success)", color: "white", fontSize: 9, fontWeight: 700 }}>LIVE SIMULATION</span>
+                    ) : (
+                        <span className="t-mono-sm" style={{ padding: "4px 8px", border: "1px solid var(--border)", opacity: 0.6, fontSize: 9 }}>STATIC DEMO</span>
+                    );
+                })()}
             </div>
 
             <AnimatePresence mode="wait">
