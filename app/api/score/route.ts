@@ -14,17 +14,53 @@ interface AIScoreResult {
 
 async function getAIScore(prompt: string): Promise<AIScoreResult | null> {
   const config = getConfig();
-  const apiKey = config.GOOGLE_AI_API_KEY || config.OPENAI_API_KEY;
-
-  if (!apiKey) return null;
 
   const systemPrompt =
-    "You are an expert Prompt Engineer. Rate the user's prompt on a scale of 0 to 100 based on clarity, context, constraints, and goal-setting. Return ONLY a JSON object: { \"score\": number, \"feedback\": \"3-5 word critique\" }. No other text.";
+    "You are an expert Prompt Engineer. Rate the user's prompt on a scale of 0 to 100 based on clarity, specificity, context, constraints, and goal-setting. A well-written natural language prompt with clear instructions should score 70+. Return ONLY a JSON object: { \"score\": number, \"feedback\": \"3-5 word critique\" }. No other text.";
 
   const startTime = Date.now();
 
   try {
-    if (config.GOOGLE_AI_API_KEY) {
+    // Try NVIDIA first (most reliable)
+    if (config.OPENAI_API_KEY) {
+      const res = await fetchWithRetry(
+        "https://integrate.api.nvidia.com/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${config.OPENAI_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: "meta/llama-3.3-70b-instruct",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: prompt },
+            ],
+            temperature: 0.1,
+            max_tokens: 150,
+            stream: false,
+          }),
+        }
+      );
+
+      if (!res.ok) return null;
+
+      const data = await res.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) return null;
+
+      const parsed = extractJSON<AIScoreResult>(content);
+      if (!parsed || typeof parsed.score !== "number" || typeof parsed.feedback !== "string") {
+        return null;
+      }
+
+      const durationMs = Date.now() - startTime;
+      logger.logExternalAPI("NVIDIA-Score", true, durationMs);
+
+      return parsed;
+    } else if (config.GOOGLE_AI_API_KEY) {
+      // Fallback to Google Gemini
       const res = await fetchWithRetry(
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent",
         {
@@ -61,49 +97,11 @@ async function getAIScore(prompt: string): Promise<AIScoreResult | null> {
       logger.logExternalAPI("Gemini-Score", true, durationMs);
 
       return parsed;
-    } else if (config.OPENAI_API_KEY) {
-      // OPENAI_API_KEY holds an NVIDIA-hosted key — route to NVIDIA endpoint
-      const res = await fetchWithRetry(
-        "https://integrate.api.nvidia.com/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${config.OPENAI_API_KEY}`,
-          },
-          body: JSON.stringify({
-            model: "meta/llama-3.3-70b-instruct",
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: prompt },
-            ],
-            temperature: 0.1,
-            max_tokens: 150,
-            stream: false,
-          }),
-        }
-      );
-
-      if (!res.ok) return null;
-
-      const data = await res.json();
-      const content = data.choices?.[0]?.message?.content;
-      if (!content) return null;
-
-      const parsed = extractJSON<AIScoreResult>(content);
-      if (!parsed || typeof parsed.score !== "number" || typeof parsed.feedback !== "string") {
-        return null;
-      }
-
-      const durationMs = Date.now() - startTime;
-      logger.logExternalAPI("OpenAI-Score", true, durationMs);
-
-      return parsed;
     }
   } catch (error) {
     const durationMs = Date.now() - startTime;
     logger.logExternalAPI(
-      config.GOOGLE_AI_API_KEY ? "Gemini-Score" : "OpenAI-Score",
+      config.OPENAI_API_KEY ? "NVIDIA-Score" : "Gemini-Score",
       false,
       durationMs,
       { error: error instanceof Error ? error.message : String(error) }
@@ -150,12 +148,16 @@ export async function POST(req: NextRequest): Promise<NextResponse<ScoreResponse
     const localScore = scorePrompt(prompt);
     let feedback = "Basic evaluation";
 
-    if (localScore < 40) {
-      feedback = "Add more detail";
-    } else if (localScore < 70) {
-      feedback = "Define your goal clearer";
+    if (localScore >= 80) {
+      feedback = "Well-crafted, detailed prompt";
+    } else if (localScore >= 60) {
+      feedback = "Good prompt, add specifics";
+    } else if (localScore >= 40) {
+      feedback = "Add constraints or examples";
+    } else if (localScore >= 20) {
+      feedback = "Needs more detail and context";
     } else {
-      feedback = "Strong prompt structure";
+      feedback = "Too short or vague";
     }
 
     const durationMs = Date.now() - startTime;

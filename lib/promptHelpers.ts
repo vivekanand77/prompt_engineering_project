@@ -37,22 +37,70 @@ export function buildPrompt(fields: PromptFields): string {
 }
 
 export function scorePrompt(prompt: string): number {
-    let score = 0;
-    const checks = [
-        { pattern: /GOAL|objective|task/i, weight: 20 },
-        { pattern: /CONTEXT|background|situation/i, weight: 15 },
-        { pattern: /OUTPUT|format|structure/i, weight: 20 },
-        { pattern: /CONSTRAINT|limit|rule|must not/i, weight: 15 },
-        { pattern: /tone|style|voice/i, weight: 10 },
-        { pattern: /example|instance|for instance/i, weight: 10 },
-        { pattern: /step|first|then|finally/i, weight: 10 },
-    ];
+    if (!prompt || prompt.trim().length < 5) return 0;
 
-    for (const check of checks) {
-        if (check.pattern.test(prompt)) {
-            score += check.weight;
-        }
-    }
+    let score = 0;
+    const words = prompt.trim().split(/\s+/);
+    const wordCount = words.length;
+    const sentences = prompt.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    const lowerPrompt = prompt.toLowerCase();
+
+    // 1. Length & Detail (0-20 points)
+    // Short prompts lack context; very long prompts are usually well-detailed
+    if (wordCount >= 10) score += 5;
+    if (wordCount >= 25) score += 5;
+    if (wordCount >= 50) score += 5;
+    if (wordCount >= 100) score += 5;
+
+    // 2. Clarity of instruction (0-20 points)
+    // Does it have a clear action verb / directive?
+    const hasDirective = /\b(write|create|generate|explain|describe|analyze|review|compare|list|summarize|draft|build|design|develop|implement|optimize|evaluate|suggest|recommend|provide|help|act as|you are|imagine)\b/i.test(prompt);
+    if (hasDirective) score += 12;
+    // Has a question or imperative structure
+    const hasQuestion = /\?/.test(prompt);
+    if (hasQuestion) score += 4;
+    // Multiple sentences suggest structured thought
+    if (sentences.length >= 2) score += 4;
+
+    // 3. Specificity & Context (0-20 points)
+    // Specific nouns, technical terms, proper nouns
+    const hasSpecificTerms = /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b/.test(prompt); // Proper nouns
+    if (hasSpecificTerms) score += 5;
+    // Contains numbers, measurements, or quantities
+    const hasNumbers = /\b\d+\b/.test(prompt);
+    if (hasNumbers) score += 5;
+    // Domain-specific keywords or technical terms
+    const hasTechnical = /\b(api|database|function|algorithm|component|module|framework|architecture|pattern|protocol|endpoint|schema|model|deploy|pipeline|stack|server|client|frontend|backend|devops|python|javascript|react|sql|css|html|node|docker|aws|firebase|mongodb)\b/i.test(prompt);
+    if (hasTechnical) score += 5;
+    // Mentions audience, persona, or role
+    const hasPersona = /\b(you are|act as|role|persona|audience|user|customer|developer|expert|senior|professional|beginner|student|stakeholder|manager)\b/i.test(prompt);
+    if (hasPersona) score += 5;
+
+    // 4. Constraints & Boundaries (0-15 points)
+    // Explicit constraints (word limits, format requirements, exclusions)
+    const hasConstraints = /\b(must|should|avoid|don't|do not|never|always|ensure|make sure|limit|maximum|minimum|at least|at most|no more than|within|between)\b/i.test(prompt);
+    if (hasConstraints) score += 8;
+    // Output format specification
+    const hasFormat = /\b(json|markdown|bullet|list|table|csv|xml|html|code|paragraph|section|heading|numbered|format|structure|template|schema|example)\b/i.test(prompt);
+    if (hasFormat) score += 7;
+
+    // 5. Examples & Structure (0-15 points)
+    // Contains examples or demonstrations
+    const hasExamples = /\b(example|e\.g\.|for instance|such as|like this|here is|sample|demo|illustration)\b/i.test(prompt);
+    if (hasExamples) score += 7;
+    // Has structural markers (steps, sections, multi-part)
+    const hasStructure = /\b(step|first|second|third|then|finally|next|part \d|section|phase|stage|1\.|2\.|3\.|- |\* )\b/i.test(prompt);
+    if (hasStructure) score += 4;
+    // Uses line breaks for organization
+    const hasLineBreaks = (prompt.match(/\n/g) || []).length >= 2;
+    if (hasLineBreaks) score += 4;
+
+    // 6. Tone & Style specification (0-10 points)
+    const hasTone = /\b(tone|style|voice|formal|informal|casual|professional|friendly|technical|creative|concise|detailed|academic|conversational|persuasive|authoritative|empathetic|humorous)\b/i.test(prompt);
+    if (hasTone) score += 5;
+    // Sensory or descriptive language (for creative prompts)
+    const hasSensory = /\b(vivid|sensory|imagery|emotion|feel|texture|atmosphere|mood|color|sound|smell|taste|touch|visual|auditory)\b/i.test(prompt);
+    if (hasSensory) score += 5;
 
     return Math.min(score, 100);
 }
