@@ -99,7 +99,8 @@ export function getAvailableProviders() {
   return {
     openai: Boolean(config.OPENAI_API_KEY),
     google: Boolean(config.GOOGLE_AI_API_KEY),
-    nvidia: Boolean(config.NVIDIA_API_KEY),
+    // NVIDIA Qwen routes through OPENAI_API_KEY (both are NVIDIA-hosted keys)
+    nvidia: Boolean(config.OPENAI_API_KEY || config.NVIDIA_API_KEY),
   };
 }
 

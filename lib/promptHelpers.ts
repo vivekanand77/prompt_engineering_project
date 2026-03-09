@@ -173,6 +173,6 @@ export function checkLiveMode() {
     return {
         openai: !!process.env.OPENAI_API_KEY,
         google: !!process.env.GOOGLE_AI_API_KEY,
-        nvidia: !!process.env.NVIDIA_API_KEY,
+        nvidia: !!(process.env.OPENAI_API_KEY || process.env.NVIDIA_API_KEY),
     };
 }

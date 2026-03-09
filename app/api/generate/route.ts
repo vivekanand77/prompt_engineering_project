@@ -9,34 +9,35 @@ import {
   type AIProviderResponse,
   type OpenAIProviderResponse,
   type GeminiProviderResponse,
-  type QwenProviderResponse,
   type GenerateResponse,
 } from "@/lib/types";
 import { fetchWithRetry, safeJSONParse } from "@/lib/apiUtils";
 
 // ─── AI Provider Helpers ─────────────────────────────────────────────────────
 
-async function callOpenAI(
+async function callNVIDIA(
   prompt: string,
-  model: string,
+  nvidiaModel: string,
+  providerLabel: string,
   temperature: number,
   maxTokens: number
 ): Promise<AIProviderResponse | null> {
   const config = getConfig();
-  if (!config.OPENAI_API_KEY) return null;
+  // Both keys route to NVIDIA — prefer OPENAI_API_KEY (it has broader model access)
+  const apiKey = config.OPENAI_API_KEY || config.NVIDIA_API_KEY;
+  if (!apiKey) return null;
 
   const startTime = Date.now();
 
   try {
-    // OPENAI_API_KEY holds an NVIDIA-hosted key — route to NVIDIA endpoint
     const res = await fetchWithRetry("https://integrate.api.nvidia.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${config.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "openai/gpt-4o",
+        model: nvidiaModel,
         messages: [{ role: "user", content: prompt }],
         temperature: Math.min(temperature, API_CONSTANTS.MAX_TEMPERATURE),
         max_tokens: maxTokens,
@@ -45,29 +46,34 @@ async function callOpenAI(
     });
 
     if (!res.ok) {
-      throw new APIError(`OpenAI/NVIDIA error: ${res.statusText}`, "OpenAI", res.status);
+      throw new APIError(`${providerLabel}/NVIDIA error: ${res.statusText}`, providerLabel, res.status);
     }
 
     const data = safeJSONParse<OpenAIProviderResponse>(await res.text(), {} as OpenAIProviderResponse);
 
-    if (!data.choices?.[0]?.message?.content) {
-      throw new APIError("Invalid response from OpenAI API", "OpenAI");
+    // Some NVIDIA models return reasoning_content instead of content (e.g. gpt-oss-120b)
+    const content = data.choices?.[0]?.message?.content
+      || (data.choices?.[0]?.message as Record<string, unknown>)?.reasoning_content as string
+      || null;
+
+    if (!content) {
+      throw new APIError(`Invalid response from ${providerLabel} API`, providerLabel);
     }
 
     const durationMs = Date.now() - startTime;
-    logger.logExternalAPI("OpenAI", true, durationMs, { model });
+    logger.logExternalAPI(providerLabel, true, durationMs, { model: nvidiaModel });
 
     return {
-      output: data.choices[0].message.content,
+      output: content,
       usage: {
         input: data.usage?.prompt_tokens || Math.ceil(prompt.length / API_CONSTANTS.CHARS_PER_TOKEN),
-        output: data.usage?.completion_tokens || Math.ceil(data.choices[0].message.content.length / API_CONSTANTS.CHARS_PER_TOKEN),
-        total: data.usage?.total_tokens || Math.ceil((prompt.length + data.choices[0].message.content.length) / API_CONSTANTS.CHARS_PER_TOKEN),
+        output: data.usage?.completion_tokens || Math.ceil(content.length / API_CONSTANTS.CHARS_PER_TOKEN),
+        total: data.usage?.total_tokens || Math.ceil((prompt.length + content.length) / API_CONSTANTS.CHARS_PER_TOKEN),
       },
     };
   } catch (error) {
     const durationMs = Date.now() - startTime;
-    logger.logExternalAPI("OpenAI", false, durationMs, { error: error instanceof Error ? error.message : String(error) });
+    logger.logExternalAPI(providerLabel, false, durationMs, { error: error instanceof Error ? error.message : String(error) });
     throw error;
   }
 }
@@ -85,7 +91,7 @@ async function callGemini(
   try {
     // FIX: Move API key to header instead of URL to prevent logging
     const res = await fetchWithRetry(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent",
       {
         method: "POST",
         headers: {
@@ -134,61 +140,11 @@ async function callGemini(
   }
 }
 
-async function callQwen(
-  prompt: string,
-  temperature: number,
-  maxTokens: number
-): Promise<AIProviderResponse | null> {
-  const config = getConfig();
-  if (!config.NVIDIA_API_KEY) return null;
-
-  const startTime = Date.now();
-
-  try {
-    const res = await fetchWithRetry("https://integrate.api.nvidia.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${config.NVIDIA_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "qwen/qwen3-235b-a22b",
-        messages: [{ role: "user", content: prompt }],
-        temperature: Math.min(temperature, API_CONSTANTS.MAX_TEMPERATURE),
-        top_p: 0.95,
-        max_tokens: maxTokens,
-        stream: false,
-      }),
-    });
-
-    if (!res.ok) {
-      throw new APIError(`Qwen error: ${res.statusText}`, "Qwen", res.status);
-    }
-
-    const data = safeJSONParse<QwenProviderResponse>(await res.text(), {} as QwenProviderResponse);
-
-    if (!data.choices?.[0]?.message?.content) {
-      throw new APIError("Invalid response from Qwen API", "Qwen");
-    }
-
-    const output = data.choices[0].message.content;
-    const durationMs = Date.now() - startTime;
-    logger.logExternalAPI("Qwen", true, durationMs);
-
-    return {
-      output,
-      usage: {
-        input: data.usage?.prompt_tokens || Math.ceil(prompt.length / API_CONSTANTS.CHARS_PER_TOKEN),
-        output: data.usage?.completion_tokens || Math.ceil(output.length / API_CONSTANTS.CHARS_PER_TOKEN),
-        total: data.usage?.total_tokens || Math.ceil((prompt.length + output.length) / API_CONSTANTS.CHARS_PER_TOKEN),
-      },
-    };
-  } catch (error) {
-    const durationMs = Date.now() - startTime;
-    logger.logExternalAPI("Qwen", false, durationMs, { error: error instanceof Error ? error.message : String(error) });
-    throw error;
-  }
-}
+// NVIDIA Model IDs — updated to currently available models
+const NVIDIA_MODELS: Record<string, string> = {
+  "NVIDIA Qwen": "deepseek-ai/deepseek-v3.1",
+  "GPT-4": "openai/gpt-oss-120b",
+};
 
 // ─── Main Route ──────────────────────────────────────────────────────────────
 
@@ -245,10 +201,12 @@ export async function POST(req: NextRequest): Promise<NextResponse<GenerateRespo
     try {
       if (model.includes("Gemini")) {
         result = await callGemini(prompt, safeTemp, safeMaxTokens);
-      } else if (model.includes("Qwen") || model.includes("NVIDIA")) {
-        result = await callQwen(prompt, safeTemp, safeMaxTokens);
-      } else if (model.includes("GPT")) {
-        result = await callOpenAI(prompt, model, safeTemp, safeMaxTokens);
+      } else {
+        // Route to NVIDIA for both GPT-4 and NVIDIA Qwen
+        const nvidiaModel = NVIDIA_MODELS[model];
+        if (nvidiaModel) {
+          result = await callNVIDIA(prompt, nvidiaModel, model, safeTemp, safeMaxTokens);
+        }
       }
 
       if (result) usedLive = true;
