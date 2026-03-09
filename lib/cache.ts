@@ -20,11 +20,18 @@ class ResponseCache {
   private cache = new Map<string, CacheEntry<unknown>>();
   private readonly DEFAULT_TTL = 5 * 60 * 1000; // 5 minutes
   private readonly MAX_SIZE = 500;
+  private cleanupInterval: NodeJS.Timeout | null = null; // FIX: Store reference
 
   constructor(private options: CacheOptions = {}) {
     // Cleanup expired entries every minute
     if (typeof window === "undefined") {
-      setInterval(() => this.cleanup(), 60_000);
+      // FIX: Store interval reference for cleanup
+      this.cleanupInterval = setInterval(() => this.cleanup(), 60_000);
+
+      // FIX: Use unref to prevent blocking process exit
+      if (this.cleanupInterval.unref) {
+        this.cleanupInterval.unref();
+      }
     }
   }
 
@@ -118,6 +125,18 @@ class ResponseCache {
   clear(): void {
     this.cache.clear();
     logger.info("Cache cleared");
+  }
+
+  /**
+   * Destroy cache and cleanup resources
+   * FIX: Added to properly cleanup interval
+   */
+  destroy(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+    this.cache.clear();
   }
 
   /**

@@ -23,9 +23,9 @@ export default function BuilderPage() {
     const [savedMsg, setSavedMsg] = useState(false);
     const { savePrompt } = useSavedPrompts();
     const router = useRouter();
-    const scoreResult = generatedPrompt ? scorePrompt(generatedPrompt) : null;
-    const score = scoreResult?.score ?? 0;
-    const scoreInfo = scoreResult ? getScoreLabel(score) : null;
+    // FIX: scorePrompt returns a number, not an object
+    const score = generatedPrompt ? scorePrompt(generatedPrompt) : 0;
+    const scoreInfo = generatedPrompt ? getScoreLabel(score) : null;
 
     const handleGenerate = async () => { setIsGenerating(true); await new Promise(r => setTimeout(r, 600)); setGeneratedPrompt(buildPrompt(fields)); setIsGenerating(false); };
     const handleReset = () => { setFields(defaultFields); setGeneratedPrompt(""); };

@@ -83,11 +83,15 @@ async function callGemini(
   const startTime = Date.now();
 
   try {
+    // FIX: Move API key to header instead of URL to prevent logging
     const res = await fetchWithRetry(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${config.GOOGLE_AI_API_KEY}`,
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": config.GOOGLE_AI_API_KEY,
+        },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: { temperature, maxOutputTokens: maxTokens },
@@ -101,11 +105,17 @@ async function callGemini(
 
     const data = safeJSONParse<GeminiProviderResponse>(await res.text(), {} as GeminiProviderResponse);
 
-    if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
-      throw new APIError("Invalid response from Gemini API", "Gemini");
+    // FIX: Handle safety filters and empty candidates
+    if (!data.candidates || data.candidates.length === 0) {
+      throw new APIError("Gemini returned no candidates (possibly filtered by safety)", "Gemini");
     }
 
-    const output = data.candidates[0].content.parts[0].text;
+    const candidate = data.candidates[0];
+    if (!candidate.content?.parts?.[0]?.text) {
+      throw new APIError("Invalid response structure from Gemini API", "Gemini");
+    }
+
+    const output = candidate.content.parts[0].text;
     const durationMs = Date.now() - startTime;
     logger.logExternalAPI("Gemini", true, durationMs);
 
@@ -189,18 +199,35 @@ export async function POST(req: NextRequest): Promise<NextResponse<GenerateRespo
   try {
     logger.logRequest("POST", "/api/generate", ip);
 
+    // FIX: Check Content-Length to prevent DOS
+    const contentLength = req.headers.get("content-length");
+    if (contentLength && parseInt(contentLength) > 1024 * 1024) { // 1MB limit
+      throw new ValidationError("Request body too large. Maximum 1MB.");
+    }
+
     // Rate limiting
     generateRateLimiter.check(ip);
 
-    // Parse and validate request
-    const body = await req.json();
+    // FIX: Parse and validate request - handle JSON parsing errors
+    let body;
+    try {
+      body = await req.json();
+    } catch (jsonError) {
+      throw new ValidationError("Invalid JSON in request body");
+    }
+
     const validation = validateGenerateRequest(body);
 
     if (!validation.success) {
       throw new ValidationError(validation.error || "Invalid request");
     }
 
-    const { prompt, model = "NVIDIA Qwen", temperature = API_CONSTANTS.DEFAULT_TEMPERATURE, maxTokens = API_CONSTANTS.DEFAULT_TOKENS_OUTPUT } = validation.data!;
+    // FIX: Proper type guard instead of assertion
+    if (!validation.data) {
+      throw new ValidationError("Validation succeeded but no data present");
+    }
+
+    const { prompt, model = "NVIDIA Qwen", temperature = API_CONSTANTS.DEFAULT_TEMPERATURE, maxTokens = API_CONSTANTS.DEFAULT_TOKENS_OUTPUT } = validation.data;
 
     // Validate prompt length
     if (prompt.length > API_CONSTANTS.MAX_PROMPT_LENGTH) {
@@ -246,6 +273,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<GenerateRespo
     const durationMs = Date.now() - startTime;
     logger.logResponse("POST", "/api/generate", 200, durationMs, { model, usedLive });
 
+    // FIX: Add rate limit headers
+    const remaining = generateRateLimiter.getRemaining(ip);
     const response: GenerateResponse = {
       output: result.output,
       model,
@@ -254,7 +283,13 @@ export async function POST(req: NextRequest): Promise<NextResponse<GenerateRespo
       timestamp: new Date().toISOString(),
     };
 
-    return NextResponse.json(response);
+    return NextResponse.json(response, {
+      headers: {
+        "X-RateLimit-Limit": API_CONSTANTS.RATE_LIMIT_MAX_REQUESTS.toString(),
+        "X-RateLimit-Remaining": remaining.toString(),
+        "X-RateLimit-Reset": new Date(Date.now() + API_CONSTANTS.RATE_LIMIT_WINDOW_MS).toISOString(),
+      },
+    });
   } catch (error) {
     const durationMs = Date.now() - startTime;
 

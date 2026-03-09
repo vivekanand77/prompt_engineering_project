@@ -21,31 +21,29 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Create AbortController with timeout
- */
-function createTimeoutController(timeoutMs: number): AbortController {
-  const controller = new AbortController();
-  setTimeout(() => controller.abort(), timeoutMs);
-  return controller;
-}
-
-/**
  * Fetch with timeout
+ * FIX: Clear timeout to prevent memory leak
  */
 async function fetchWithTimeout(
   url: string,
   options: RequestInit,
   timeoutMs: number
 ): Promise<Response> {
-  const controller = createTimeoutController(timeoutMs);
+  const controller = new AbortController();
+  // FIX: Store timeout ID so we can clear it
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(url, {
       ...options,
       signal: controller.signal,
     });
+    // FIX: Clear timeout on success
+    clearTimeout(timeoutId);
     return response;
   } catch (error) {
+    // FIX: Clear timeout on error too
+    clearTimeout(timeoutId);
     if (error instanceof Error && error.name === "AbortError") {
       throw new APIError(
         `Request timeout after ${timeoutMs}ms`,
@@ -139,7 +137,7 @@ export function safeJSONParse<T = unknown>(
 
 /**
  * Extract JSON from text that may contain markdown code blocks or extra text
- * More robust than regex-based parsing
+ * FIX: Non-greedy regex to prevent ReDoS
  */
 export function extractJSON<T = unknown>(text: string): T | null {
   try {
@@ -156,8 +154,9 @@ export function extractJSON<T = unknown>(text: string): T | null {
       }
     }
 
+    // FIX: Use non-greedy matching to prevent ReDoS
     // Try to find JSON object in text
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const jsonMatch = text.match(/\{[\s\S]*?\}/);
     if (jsonMatch) {
       try {
         return JSON.parse(jsonMatch[0]) as T;
@@ -167,7 +166,7 @@ export function extractJSON<T = unknown>(text: string): T | null {
     }
 
     // Try to find JSON array in text
-    const arrayMatch = text.match(/\[[\s\S]*\]/);
+    const arrayMatch = text.match(/\[[\s\S]*?\]/);
     if (arrayMatch) {
       try {
         return JSON.parse(arrayMatch[0]) as T;
