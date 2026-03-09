@@ -38,7 +38,10 @@ async function callNVIDIA(
       },
       body: JSON.stringify({
         model: nvidiaModel,
-        messages: [{ role: "user", content: prompt }],
+        messages: [
+          { role: "system", content: "You are a helpful AI assistant. Respond directly and thoroughly to the user's request. Do not comment on or evaluate the prompt itself — just answer it." },
+          { role: "user", content: prompt },
+        ],
         temperature: Math.min(temperature, API_CONSTANTS.MAX_TEMPERATURE),
         max_tokens: maxTokens,
         stream: false,
@@ -144,7 +147,7 @@ async function callGemini(
 const NVIDIA_MODELS: Record<string, string> = {
   "NVIDIA Qwen": "meta/llama-3.3-70b-instruct",
   "GPT-4": "meta/llama-3.1-405b-instruct",
-  "Gemini Pro": "google/gemma-3-27b-it",
+  "Gemini Pro": "mistralai/mistral-small-24b-instruct",
 };
 
 // ─── Main Route ──────────────────────────────────────────────────────────────
