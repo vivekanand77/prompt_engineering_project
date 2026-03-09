@@ -67,42 +67,89 @@ export function getScoreLabel(score: number): {
     return { label: "Needs Work", color: "var(--error)" };
 }
 
-const MOCK_RESPONSES: Record<string, string[]> = {
-    "GPT-4": [
-        "Based on your prompt, here's my analysis:\n\nThe approach you've outlined is methodologically sound. I'll break this down into structured components:\n\n**1. Primary Analysis**\nYour request encompasses several key dimensions that require careful consideration. The context you've provided suggests a multi-layered challenge.\n\n**2. Recommended Approach**\n- Start with the fundamentals\n- Build iteratively\n- Validate at each stage\n\n**3. Expected Outcomes**\nFollowing this framework should yield measurable results within the defined constraints.",
-        "Understood. Let me provide a comprehensive response:\n\nThe task requires balancing multiple competing priorities. Here's a structured framework:\n\n```\nStep 1: Define scope\nStep 2: Identify key variables\nStep 3: Apply reasoning chain\nStep 4: Validate output\n```\n\nThis approach ensures both accuracy and efficiency in addressing your requirements.",
-    ],
-    "Claude 3": [
-        "I've carefully considered your prompt and here's my response:\n\nThis is a thoughtful question that touches on several important areas. Let me walk through my reasoning:\n\nFirst, it's worth establishing the baseline. The context you've provided helps me understand the specific constraints and goals at play here.\n\nSecond, considering the output format you specified, I'll structure this response to match your exact requirements while maintaining clarity and precision.\n\nThird, I want to flag a few considerations that might affect the approach...",
-        "Thank you for the detailed prompt. Here's my analysis:\n\nThe challenge here involves navigating a complex solution space. I'll approach this systematically:\n\n**Core Insight**: The key tension in this problem is between specificity and generalizability.\n\n**My Recommendation**: Given your constraints, I'd suggest a phased approach that allows for iteration and refinement at each stage.",
-    ],
-    "Gemini Pro": [
-        "Analyzing your prompt...\n\nHere's a structured response based on your requirements:\n\n• **Key Finding 1**: The primary objective aligns well with best practices in this domain\n• **Key Finding 2**: The constraints you've set are reasonable and achievable\n• **Key Finding 3**: The output format you specified will work well for this use case\n\nI recommend proceeding with the outlined approach, with minor adjustments for edge cases.",
-        "Based on the context provided, here's my response:\n\nThis problem can be decomposed into three main components:\n\n1. **Data gathering** — Collecting relevant inputs\n2. **Processing** — Applying the reasoning framework\n3. **Output generation** — Formatting results per your specification\n\nEach component has been optimized for your stated goal and constraints.",
-    ],
-    "Local LLM": [
-        "Processing prompt...\n\nResponse generated:\n\nI have analyzed your input according to the specified parameters. The output follows your requested format and adheres to the stated constraints. This response has been generated with consideration for efficiency and accuracy.",
-    ],
-};
+/**
+ * Extract key topics/keywords from a prompt for context-aware mock responses
+ */
+function extractPromptContext(prompt: string): { topic: string; keywords: string[]; isCode: boolean; isList: boolean; isCreative: boolean } {
+    const words = prompt.toLowerCase().split(/\s+/);
+    const isCode = /code|function|script|component|api|sql|query|debug|refactor|bug|error|class|module/i.test(prompt);
+    const isList = /list|steps|itinerary|checklist|generate \d|create \d|top \d|tagline/i.test(prompt);
+    const isCreative = /write|story|creative|imagine|poem|essay|letter|blog|article|leonardo|persona/i.test(prompt);
+
+    // Extract meaningful keywords (skip common words)
+    const stopWords = new Set(["the", "a", "an", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "do", "does", "did", "will", "would", "could", "should", "may", "might", "shall", "can", "need", "dare", "ought", "used", "to", "of", "in", "for", "on", "with", "at", "by", "from", "as", "into", "through", "during", "before", "after", "above", "below", "between", "out", "off", "over", "under", "again", "further", "then", "once", "here", "there", "when", "where", "why", "how", "all", "both", "each", "few", "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very", "just", "because", "but", "and", "or", "if", "while", "that", "this", "it", "its", "my", "your", "you", "i", "me", "we", "they", "them", "their", "what", "which", "who", "whom"]);
+    const keywords = words
+        .filter(w => w.length > 3 && !stopWords.has(w))
+        .slice(0, 8);
+
+    // Get a rough topic from the first meaningful sentence
+    const firstLine = prompt.split(/[.\n]/)[0].trim();
+    const topic = firstLine.length > 80 ? firstLine.slice(0, 80) + "..." : firstLine;
+
+    return { topic, keywords, isCode, isList, isCreative };
+}
+
+/**
+ * Generate a context-aware mock response tailored to the model style
+ */
+function generateContextMock(prompt: string, model: string): string {
+    const ctx = extractPromptContext(prompt);
+    const keywordStr = ctx.keywords.slice(0, 4).join(", ");
+    const promptPreview = prompt.length > 120 ? prompt.slice(0, 120) + "..." : prompt;
+
+    switch (model) {
+        case "GPT-4":
+            if (ctx.isCode) {
+                return `**Analysis of your request**: "${ctx.topic}"\n\nI've reviewed the technical requirements. Here's my structured approach:\n\n**1. Understanding**\nYour prompt focuses on: ${keywordStr}. This is a well-scoped technical task.\n\n**2. Implementation Plan**\n\`\`\`\nStep 1: Parse and understand the input requirements\nStep 2: Design the solution architecture\nStep 3: Implement with best practices (error handling, edge cases)\nStep 4: Review for performance and security\n\`\`\`\n\n**3. Key Considerations**\n- Follow SOLID principles for maintainable code\n- Add proper error handling and input validation\n- Consider edge cases and boundary conditions\n- Optimize for readability and performance\n\n**4. Output**\nThe implementation would follow industry standards with proper documentation and test coverage.\n\n*[Simulated GPT-4 response — connect a live API key for real output]*`;
+            }
+            if (ctx.isList) {
+                return `**Responding to**: "${ctx.topic}"\n\nBased on the parameters you specified (${keywordStr}), here's my structured output:\n\n**1.** A carefully crafted first item that addresses the core theme\n**2.** A creative variation that explores a different angle\n**3.** An innovative approach combining multiple elements\n**4.** A practical option focused on real-world applicability\n**5.** A bold choice that pushes creative boundaries\n\nEach item has been tailored to your specific requirements around ${keywordStr}.\n\n**Rationale**: These options balance creativity with the constraints you outlined in your prompt.\n\n*[Simulated GPT-4 response — connect a live API key for real output]*`;
+            }
+            return `**Analyzing**: "${ctx.topic}"\n\nI'll address your prompt covering: ${keywordStr}.\n\n**1. Primary Analysis**\nYour request touches on several interconnected areas. The context suggests a multi-dimensional challenge that benefits from a systematic breakdown.\n\n**2. Structured Response**\n- **Core Focus**: ${ctx.keywords[0] || "the main topic"} — this forms the foundation of the response\n- **Supporting Elements**: ${ctx.keywords.slice(1, 3).join(", ") || "additional context"} — these enrich the output\n- **Constraints Applied**: Following the parameters you've set\n\n**3. Recommendations**\nGiven the scope of "${ctx.topic}", I recommend an iterative approach that validates assumptions at each stage.\n\n*[Simulated GPT-4 response — connect a live API key for real output]*`;
+
+        case "Gemini Pro":
+            if (ctx.isCode) {
+                return `Analyzing your technical request...\n\n**Prompt**: "${ctx.topic}"\n\n**Technical Breakdown:**\n\n• **Domain**: ${keywordStr}\n• **Type**: Code generation / technical analysis\n• **Complexity**: Moderate to high\n\n**Approach:**\n\n1. **Parse Requirements** — Identify the core technical goals from your prompt\n2. **Architecture Design** — Choose appropriate patterns and data structures\n3. **Implementation** — Write clean, documented code following best practices\n4. **Validation** — Test against edge cases and performance benchmarks\n\n**Key Technical Decisions:**\n- Use modern syntax and patterns\n- Implement comprehensive error handling\n- Follow the principle of least surprise\n- Document public interfaces\n\n**Output Format**: Structured code with inline comments explaining key decisions.\n\n*[Simulated Gemini Pro response — connect a live API key for real output]*`;
+            }
+            if (ctx.isList) {
+                return `Processing: "${ctx.topic}"\n\n**Identified Parameters**: ${keywordStr}\n\n**Generated Items:**\n\n• **Item 1**: Directly addresses your primary requirement with focus on ${ctx.keywords[0] || "the main theme"}\n• **Item 2**: Explores a creative angle related to ${ctx.keywords[1] || "your topic"}\n• **Item 3**: Combines practical utility with the constraints you specified\n• **Item 4**: A unique perspective that differentiates from standard approaches\n• **Item 5**: Synthesizes all elements for maximum impact\n\n**Quality Metrics:**\n- Relevance to prompt: High\n- Creativity score: Above average\n- Constraint adherence: Full compliance\n\n*[Simulated Gemini Pro response — connect a live API key for real output]*`;
+            }
+            return `Processing your request...\n\n**Input Analysis**: "${ctx.topic}"\n**Key Topics**: ${keywordStr}\n\n**Structured Response:**\n\n• **Finding 1**: Your prompt's focus on ${ctx.keywords[0] || "this topic"} aligns with established best practices in the field\n• **Finding 2**: The relationship between ${ctx.keywords[0] || "the primary topic"} and ${ctx.keywords[1] || "secondary elements"} suggests an integrated approach\n• **Finding 3**: Given the constraints, a phased methodology would optimize results\n\n**Synthesis:**\nCombining these findings with your stated requirements around ${keywordStr}, the optimal path forward involves structured iteration with validation checkpoints.\n\n**Confidence Level**: High — your prompt provides sufficient context for a well-grounded response.\n\n*[Simulated Gemini Pro response — connect a live API key for real output]*`;
+
+        case "NVIDIA Qwen":
+            if (ctx.isCode) {
+                return `<think>\nThe user is asking about: ${ctx.topic}\nKey technical areas: ${keywordStr}\nI need to provide a technical solution with proper structure.\n</think>\n\n## Technical Response\n\n**Request**: ${ctx.topic}\n\nHere's my analysis of the technical requirements:\n\n### Architecture\nBased on the requirements (${keywordStr}), I recommend:\n\n\`\`\`\n1. Module structure with clear separation of concerns\n2. Input validation layer\n3. Core processing logic\n4. Error handling wrapper\n5. Output formatting\n\`\`\`\n\n### Implementation Notes\n- Use type-safe interfaces for all data boundaries\n- Implement retry logic for external calls\n- Add logging at key decision points\n- Follow defensive programming practices\n\n### Quality Checklist\n- [ ] Unit tests for core logic\n- [ ] Integration tests for API boundaries\n- [ ] Error handling for all edge cases\n- [ ] Performance profiling\n\n*[Simulated NVIDIA Qwen response — connect a live API key for real output]*`;
+            }
+            if (ctx.isList) {
+                return `<think>\nThe user wants a list/enumeration related to: ${ctx.topic}\nFocusing on: ${keywordStr}\n</think>\n\n## Response to: "${ctx.topic}"\n\nBased on your requirements around ${keywordStr}, here are my recommendations:\n\n### Generated List\n\n1. **Option A**: Focused on ${ctx.keywords[0] || "the primary theme"} — prioritizes directness and clarity\n2. **Option B**: Emphasizes ${ctx.keywords[1] || "key aspects"} — creative angle with practical grounding\n3. **Option C**: Combines multiple elements from your prompt for comprehensive coverage\n4. **Option D**: Takes an unconventional approach to stand out\n5. **Option E**: Balanced synthesis of all requirements\n\n### Selection Criteria\nEach option was evaluated against your stated parameters. Options A and C score highest for alignment with your prompt's ${keywordStr} focus.\n\n*[Simulated NVIDIA Qwen response — connect a live API key for real output]*`;
+            }
+            return `<think>\nAnalyzing the prompt: "${ctx.topic}"\nKey areas to address: ${keywordStr}\n</think>\n\n## Analysis\n\n**Your Prompt**: "${ctx.topic}"\n\nI'll address the key aspects of your request:\n\n### Key Points\n\n1. **${ctx.keywords[0] || "Primary Topic"}**: This forms the core of your request. The approach should be systematic and grounded in established methodology.\n\n2. **${ctx.keywords[1] || "Supporting Context"}**: This enriches the response by providing additional dimensions to consider.\n\n3. **${ctx.keywords[2] || "Implementation"}**: Practical execution requires careful planning and iterative refinement.\n\n### Recommendation\n\nGiven the scope of your prompt focusing on ${keywordStr}, I suggest a structured approach:\n- Start with clear definitions and scope\n- Apply domain-specific best practices\n- Iterate based on feedback and results\n- Validate against your stated constraints\n\n### Summary\nYour prompt is well-structured. The response above addresses the main themes while respecting the boundaries you've established.\n\n*[Simulated NVIDIA Qwen response — connect a live API key for real output]*`;
+
+        case "Claude 3":
+            return `I've carefully considered your prompt: "${ctx.topic}"\n\nThis touches on several important areas, particularly around ${keywordStr}. Let me walk through my reasoning:\n\n**First**, it's worth establishing the baseline. Your request involves ${ctx.keywords[0] || "a clearly defined topic"}, which sets the stage for a focused response.\n\n**Second**, the relationship between ${ctx.keywords[0] || "your primary topic"} and ${ctx.keywords[1] || "the broader context"} is worth exploring — it suggests that a nuanced approach will yield better results than a surface-level treatment.\n\n**Third**, considering your stated requirements, I'd structure the output to prioritize clarity and actionability.\n\n**My Recommendation**: An iterative approach that balances depth with practical applicability. Start with the fundamentals around ${keywordStr}, then build out from there.\n\n*[Simulated Claude 3 response — connect a live API key for real output]*`;
+
+        default:
+            return `Processing your prompt: "${ctx.topic}"\n\nKey areas identified: ${keywordStr}\n\nThe response has been generated based on your input parameters. Key themes from your prompt have been analyzed and incorporated into this output.\n\n*[Simulated response — connect a live API key for real output]*`;
+    }
+}
 
 export async function mockAIResponse(
     prompt: string,
     model: string = "GPT-4",
     delay: number = 1500
 ): Promise<string> {
-    await new Promise((r) => setTimeout(r, delay + Math.random() * 1000));
+    // Simulate variable latency per model
+    const modelDelays: Record<string, number> = {
+        "GPT-4": 800,
+        "Gemini Pro": 600,
+        "NVIDIA Qwen": 1000,
+        "Claude 3": 900,
+        "Local LLM": 400,
+    };
+    const baseDelay = modelDelays[model] || delay;
+    await new Promise((r) => setTimeout(r, baseDelay + Math.random() * 500));
 
-    const responses = MOCK_RESPONSES[model] || MOCK_RESPONSES["GPT-4"];
-    const response = responses[Math.floor(Math.random() * responses.length)];
-
-    // Add some prompt-aware customization
-    const wordCount = prompt.split(" ").length;
-    const suffix =
-        wordCount > 50
-            ? "\n\n*Note: This response has been tailored to your detailed prompt specification.*"
-            : "";
-
-    return response + suffix;
+    return generateContextMock(prompt, model);
 }
 
 export function countTokens(text: string): number {

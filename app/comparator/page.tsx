@@ -13,7 +13,7 @@ const MODELS = [
     { name: "GPT-4", icon: "●" },
 ];
 
-interface ModelResult { output: string; time: number; tokens: number; status: "idle" | "loading" | "done" | "error"; }
+interface ModelResult { output: string; time: number; tokens: number; status: "idle" | "loading" | "done" | "error"; live: boolean; }
 
 export default function ComparatorPage() {
     const [prompt, setPrompt] = useState("");
@@ -30,7 +30,7 @@ export default function ComparatorPage() {
     }, []);
     const [results, setResults] = useState<Record<string, ModelResult>>(() => {
         const out: Record<string, ModelResult> = {};
-        MODELS.forEach(m => { out[m.name] = { output: "", time: 0, tokens: 0, status: "idle" }; });
+        MODELS.forEach(m => { out[m.name] = { output: "", time: 0, tokens: 0, status: "idle", live: false }; });
         return out;
     });
 
@@ -41,7 +41,7 @@ export default function ComparatorPage() {
         // Set all to loading immediately
         setResults(prev => {
             const next = { ...prev };
-            MODELS.forEach(m => { next[m.name] = { output: "", time: 0, tokens: 0, status: "loading" }; });
+            MODELS.forEach(m => { next[m.name] = { output: "", time: 0, tokens: 0, status: "loading", live: false }; });
             return next;
         });
 
@@ -60,13 +60,13 @@ export default function ComparatorPage() {
                 const elapsed = Date.now() - start;
                 setResults(prev => ({
                     ...prev,
-                    [m.name]: { output: data.output || "No response", time: elapsed, tokens: data.tokens?.total || 0, status: "done" as const },
+                    [m.name]: { output: data.output || "No response", time: elapsed, tokens: data.tokens?.total || 0, status: "done" as const, live: data.live === true },
                 }));
             } catch (err) {
                 const msg = err instanceof Error ? err.message : "Failed";
                 setResults(prev => ({
                     ...prev,
-                    [m.name]: { output: msg, time: 0, tokens: 0, status: "error" as const },
+                    [m.name]: { output: msg, time: 0, tokens: 0, status: "error" as const, live: false },
                 }));
             }
         }));
@@ -122,7 +122,22 @@ export default function ComparatorPage() {
                         <motion.div key={m.name} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                             <div style={{ border: "1px solid var(--border)", padding: "var(--sp-3)" }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--sp-2)" }}>
-                                    <span className="t-micro-dark">{m.name}</span>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-1)" }}>
+                                        <span className="t-micro-dark">{m.name}</span>
+                                        {r.status === "done" && (
+                                            <span style={{
+                                                fontSize: 9,
+                                                padding: "1px 6px",
+                                                borderRadius: 3,
+                                                fontWeight: 700,
+                                                textTransform: "uppercase",
+                                                background: r.live ? "var(--success)" : "var(--border)",
+                                                color: r.live ? "#fff" : "var(--text-secondary)",
+                                            }}>
+                                                {r.live ? "Live" : "Simulated"}
+                                            </span>
+                                        )}
+                                    </div>
                                     {r.status === "done" && <CopyButton text={r.output} />}
                                 </div>
 

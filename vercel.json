@@ -11,14 +11,6 @@
     "autoAlias": true,
     "silent": false
   },
-  "env": {
-    "NEXT_PUBLIC_APP_URL": "@app-url"
-  },
-  "build": {
-    "env": {
-      "NEXT_PUBLIC_APP_URL": "@app-url"
-    }
-  },
   "functions": {
     "app/api/**/*.ts": {
       "maxDuration": 30,

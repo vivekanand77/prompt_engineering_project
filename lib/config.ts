@@ -19,7 +19,7 @@ export const API_CONSTANTS = {
 
   // API timeouts (milliseconds)
   API_TIMEOUT_MS: 30_000,
-  API_RETRY_ATTEMPTS: 3,
+  API_RETRY_ATTEMPTS: 2,
   API_RETRY_DELAY_MS: 1000,
 
   // Model limits
